@@ -427,6 +427,28 @@ function updateUserUI() {
         userPanel.style.display = 'none';
     }
 
+    // 更新顶部导航栏用户面板
+    const topLoginBtn = document.getElementById('topLoginBtn');
+    const topUserPanel = document.getElementById('topUserPanel');
+    const topUserDisplay = document.getElementById('topUserDisplay');
+
+    if (topLoginBtn && topUserPanel) {
+        if (currentUser) {
+            topLoginBtn.style.display = 'none';
+            topUserPanel.style.display = 'flex';
+            topUserDisplay.textContent = currentUser.displayName;
+        } else {
+            topLoginBtn.style.display = 'flex';
+            topUserPanel.style.display = 'none';
+        }
+    }
+
+    // 显示/隐藏发布公告按钮（仅管理员）
+    const postAnnouncementBtn = document.getElementById('postAnnouncementBtn');
+    if (postAnnouncementBtn) {
+        postAnnouncementBtn.style.display = currentUser?.isAdmin ? 'block' : 'none';
+    }
+
     // 显示/隐藏批量操作工具栏（仅管理员）
     const batchToolbar = document.getElementById('batchToolbar');
     if (batchToolbar) {
@@ -3714,4 +3736,191 @@ function setupOnlineUsersRealtime() {
                 console.log('[在线追踪] Realtime 订阅成功！');
             }
         });
+}
+
+// ========== 顶部导航栏标签切换功能 ==========
+
+// 当前标签页
+let currentTab = 'suggestions';
+
+// 切换标签页
+function switchTab(tab) {
+    currentTab = tab;
+
+    // 更新导航按钮状态
+    document.querySelectorAll('.top-nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.tab === tab) {
+            item.classList.add('active');
+        }
+    });
+
+    // 隐藏所有页面
+    document.querySelector('.container').style.display = 'none';
+    document.getElementById('chatWindow').classList.remove('show');
+    document.getElementById('announcementsPage').style.display = 'none';
+
+    // 显示对应页面
+    switch (tab) {
+        case 'suggestions':
+            document.querySelector('.container').style.display = 'block';
+            break;
+        case 'chat':
+            document.getElementById('chatWindow').classList.add('show');
+            // 滚动到底部
+            const chatMessages = document.getElementById('chatMessages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            break;
+        case 'announcements':
+            document.getElementById('announcementsPage').style.display = 'block';
+            loadAnnouncements();
+            break;
+    }
+}
+
+// ========== 公告功能 ==========
+
+// 加载公告列表
+async function loadAnnouncements() {
+    const container = document.getElementById('announcementsList');
+    if (!container) return;
+
+    try {
+        // 查询公告，按置顶和时间排序
+        const { data: announcements, error } = await supabaseClient
+            .from('announcements')
+            .select('*')
+            .order('is_pinned', { ascending: false })
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!announcements || announcements.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📭</div>
+                    <p>暂无公告</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = announcements.map(announcement => `
+            <div class="announcement-card ${announcement.is_pinned ? 'pinned' : ''}">
+                <div class="announcement-header">
+                    <div class="announcement-title">${escapeHtml(announcement.title)}</div>
+                    <div class="announcement-meta">
+                        <span class="announcement-author">${escapeHtml(announcement.author_name || '管理员')}</span>
+                        <span>•</span>
+                        <span>${formatTime(announcement.created_at)}</span>
+                    </div>
+                </div>
+                <div class="announcement-content">${escapeHtml(announcement.content)}</div>
+                ${currentUser?.isAdmin ? `
+                    <button class="announcement-delete-btn" onclick="deleteAnnouncement('${announcement.id}')">删除</button>
+                ` : ''}
+            </div>
+        `).join('');
+
+    } catch (err) {
+        console.error('加载公告失败:', err);
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <p>加载失败，请稍后重试</p>
+            </div>
+        `;
+    }
+}
+
+// 显示发布公告模态框
+function showAnnouncementModal() {
+    if (!currentUser?.isAdmin) {
+        showMessage('只有管理员可以发布公告', 'error');
+        return;
+    }
+    document.getElementById('announcementModal').classList.add('show');
+}
+
+// 关闭发布公告模态框
+function closeAnnouncementModal() {
+    document.getElementById('announcementModal').classList.remove('show');
+    document.getElementById('announcementForm').reset();
+}
+
+// 处理公告提交
+async function handleAnnouncementSubmit(event) {
+    event.preventDefault();
+
+    if (!currentUser?.isAdmin) {
+        showMessage('只有管理员可以发布公告', 'error');
+        return;
+    }
+
+    const title = document.getElementById('announcementTitle').value.trim();
+    const content = document.getElementById('announcementContent').value.trim();
+    const isPinned = document.getElementById('announcementPinned').checked;
+
+    if (!title || !content) {
+        showMessage('请填写完整的公告信息', 'error');
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('announcements')
+            .insert([{
+                title,
+                content,
+                author_id: currentUser.id,
+                author_name: currentUser.displayName || currentUser.username,
+                is_pinned: isPinned
+            }]);
+
+        if (error) throw error;
+
+        closeAnnouncementModal();
+        showMessage('公告发布成功！', 'success');
+        loadAnnouncements();
+
+    } catch (err) {
+        console.error('发布公告失败:', err);
+        showMessage('发布失败，请稍后重试', 'error');
+    }
+}
+
+// 删除公告
+async function deleteAnnouncement(announcementId) {
+    if (!currentUser?.isAdmin) {
+        showMessage('只有管理员可以删除公告', 'error');
+        return;
+    }
+
+    if (!confirm('确定要删除这条公告吗？')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('announcements')
+            .delete()
+            .eq('id', announcementId);
+
+        if (error) throw error;
+
+        showMessage('公告已删除', 'success');
+        loadAnnouncements();
+
+    } catch (err) {
+        console.error('删除公告失败:', err);
+        showMessage('删除失败，请稍后重试', 'error');
+    }
+}
+
+// HTML 转义函数
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

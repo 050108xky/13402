@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我们的土木</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
     <!-- 背景粒子效果 -->
@@ -24,7 +24,33 @@
             <span class="user-stat-value" id="onlineCount">-</span>
         </div>
     </div>
-    
+
+    <!-- 顶部导航栏（桌面端和移动端共用） -->
+    <div class="top-header" id="topHeader">
+        <div class="top-nav">
+            <button class="top-nav-item active" data-tab="suggestions" onclick="switchTab('suggestions')">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">意见建议</span>
+            </button>
+            <button class="top-nav-item" data-tab="chat" onclick="switchTab('chat')">
+                <span class="nav-icon">💭</span>
+                <span class="nav-text">聊天室</span>
+            </button>
+            <button class="top-nav-item" data-tab="announcements" onclick="switchTab('announcements')">
+                <span class="nav-icon">📢</span>
+                <span class="nav-text">公告</span>
+            </button>
+        </div>
+        <button class="top-login-btn" id="topLoginBtn" onclick="showLoginModal()">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">登录</span>
+        </button>
+        <div class="top-user-panel" id="topUserPanel" style="display: none;">
+            <span id="topUserDisplay"></span>
+            <button onclick="logout()">退出</button>
+        </div>
+    </div>
+
     <!-- 主容器 -->
     <div class="container">
         <!-- 标题区域 -->
@@ -196,6 +222,48 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- 移动端公告页面 -->
+    <div class="mobile-page" id="announcementsPage" style="display: none;">
+        <div class="mobile-page-header">
+            <h2>📢 公告栏</h2>
+            <button class="admin-post-btn" id="postAnnouncementBtn" style="display: none;" onclick="showAnnouncementModal()">
+                <span>+ 发布公告</span>
+            </button>
+        </div>
+        <div class="announcements-list" id="announcementsList">
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>暂无公告</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 发布公告模态框 -->
+    <div id="announcementModal" class="modal">
+        <div class="modal-content glass-effect">
+            <button class="detail-close-btn" onclick="closeAnnouncementModal()">✕</button>
+            <h3>📢 发布公告</h3>
+            <form id="announcementForm" onsubmit="handleAnnouncementSubmit(event)">
+                <div class="form-group">
+                    <label>公告标题</label>
+                    <input type="text" id="announcementTitle" placeholder="请输入公告标题" required>
+                </div>
+                <div class="form-group">
+                    <label>公告内容</label>
+                    <textarea id="announcementContent" rows="6" placeholder="请输入公告内容..." required></textarea>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="announcementPinned">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">置顶公告</span>
+                    </label>
+                </div>
+                <button type="submit" class="auth-submit-btn">发布</button>
+            </form>
+        </div>
     </div>
 
     <!-- 聊天室浮动窗口 -->
@@ -390,6 +458,6 @@
     <script src="config.js"></script>
 
     <!-- 主脚本 -->
-    <script src="script.js"></script>
+    <script src="script.js?v=4"></script>
 </body>
 </html>
