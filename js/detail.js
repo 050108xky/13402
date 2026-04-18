@@ -75,6 +75,7 @@ function showDetailModal(suggestion) {
     loadComments(suggestion.id);
 
     modal.classList.add('show');
+    pushModalHistory('detailModal');
 
     // 锁定底层页面滚动
     document.body.style.overflow = 'hidden';

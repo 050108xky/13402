@@ -8,6 +8,7 @@ function showAnnouncementModal() {
         publishSection.style.display = (currentUser && currentUser.isAdmin) ? 'flex' : 'none';
     }
     loadAnnouncements();
+    pushModalHistory('announcementModal');
 }
 
 function closeAnnouncementModal() {
@@ -17,6 +18,7 @@ function closeAnnouncementModal() {
     const contentInput = document.getElementById('announceContentInput');
     if (titleInput) titleInput.value = '';
     if (contentInput) contentInput.value = '';
+    popModalHistory('announcementModal');
 }
 
 async function loadAnnouncements() {

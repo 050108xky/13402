@@ -18,6 +18,7 @@ function restoreUserSession() {
 function showLoginModal() {
     document.getElementById('authModal').classList.add('show');
     document.getElementById('loginUsername').focus();
+    pushModalHistory('authModal');
 }
 
 // 关闭登录模态框
@@ -25,6 +26,7 @@ function closeAuthModal() {
     document.getElementById('authModal').classList.remove('show');
     document.getElementById('loginForm').reset();
     document.getElementById('registerForm').reset();
+    popModalHistory('authModal');
 }
 
 // 切换登录/注册标签
@@ -95,8 +97,8 @@ async function handleLogin(e) {
         // 重新加载建议
         loadSuggestions(true);
 
-        // 重新加载聊天消息，更新 isOwn 判断
-        if (isChatWindowOpen) loadChatMessages();
+        // 重新加载聊天消息，更新 isOwn 判断（无论窗口是否打开）
+        loadChatMessages();
 
         // 加载用户等级经验
         loadCurrentUserExp();
@@ -203,8 +205,8 @@ function logout() {
     clearCurrentUserExp();
     updateUserUI();
     loadSuggestions(true);
-    // 重新加载聊天消息，更新 isOwn 判断
-    if (isChatWindowOpen) loadChatMessages();
+    // 重新加载聊天消息，更新 isOwn 判断（无论窗口是否打开）
+    loadChatMessages();
     showMessageModal('已退出', '您已成功退出登录', 'info');
 }
 

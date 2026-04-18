@@ -97,7 +97,7 @@ function renderChatMessages(messages) {
 
     container.innerHTML = messages.map(msg => {
         const isOwn = (currentUser && msg.user_id === currentUser.id) ||
-                      msg.anonymous_user_id === anonymousUserId;
+                      (!currentUser && msg.anonymous_user_id && msg.anonymous_user_id === anonymousUserId);
         const isAdmin = currentUser && currentUser.isAdmin;
 
         const msgTime = new Date(msg.created_at).getTime();
@@ -311,7 +311,7 @@ function addChatMessage(msg) {
     if (loading) loading.remove();
 
     const isOwn = (currentUser && msg.user_id === currentUser.id) ||
-                  msg.anonymous_user_id === anonymousUserId;
+                  (!currentUser && msg.anonymous_user_id && msg.anonymous_user_id === anonymousUserId);
     const isAdmin = currentUser && currentUser.isAdmin;
 
     // 获取等级信息（管理员显示管理员标签）
