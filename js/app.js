@@ -1,0 +1,65 @@
+// ========== 主入口：初始化 ==========
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // 清理旧的缓存数据（已弃用缓存机制）
+    localStorage.removeItem('class_suggestions_cache');
+
+    // 缓存 DOM 元素
+    suggestionsContainer = document.getElementById('suggestionsList');
+    countBadge = document.getElementById('suggestionCount');
+
+    // 初始化 Supabase 客户端
+    await initializeSupabase();
+
+    // 初始化匿名用户ID
+    initializeAnonymousUserId();
+
+    // 恢复用户登录状态
+    restoreUserSession();
+
+    // 加载用户点赞记录
+    loadUserLikes();
+
+    // 设置表单处理
+    setupFormHandler();
+
+    // 设置炫彩输入效果
+    setupRainbowInputs();
+
+    // 加载本地草稿
+    loadDraft();
+
+    // 性能优化：减少粒子数量，移动端更少
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+    createParticles(isMobile ? 8 : 15);
+
+    // 初始化彩虹标题
+    initRainbowTitle();
+
+    // 设置筛选和搜索
+    setupFilterAndSearch();
+
+    // 加载建议
+    await loadSuggestions();
+
+    // 检查新回复
+    checkNewReplies();
+
+    // 设置浏览器通知
+    setupNotifications();
+
+    // 启用建议实时订阅
+    setupRealtimeSubscriptions();
+
+    // 启用聊天实时订阅
+    setupChatRealtimeSubscription();
+
+    // 启用下拉刷新
+    setupPullToRefresh();
+
+    // 加载聊天消息
+    loadChatMessages();
+
+    // 设置聊天输入
+    setupChatInput();
+});

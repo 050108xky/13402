@@ -1061,7 +1061,7 @@ body {
     position: fixed;
     top: 0;
     left: 50%;
-    transform: translateX(-50%) translateY(-60px);
+    transform: translateX(-50%);
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
     padding: 10px 25px;
@@ -1073,7 +1073,7 @@ body {
     font-weight: 500;
     z-index: 9999;
     opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    transition: opacity 0.3s ease;
     box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
 }
 

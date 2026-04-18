@@ -403,6 +403,9 @@ async function handleLogin(e) {
         // 重新加载建议
         loadSuggestions(true);
 
+        // 重新加载聊天消息，更新 isOwn 判断
+        if (isChatWindowOpen) loadChatMessages();
+
     } catch (err) {
         showMessageModal('登录失败', '网络错误，请重试', 'error');
     }
@@ -483,6 +486,9 @@ async function handleRegister(e) {
 
         showMessageModal('注册成功', `欢迎，${currentUser.displayName}！`, 'success');
 
+        // 重新加载聊天消息
+        if (isChatWindowOpen) loadChatMessages();
+
     } catch (err) {
         showMessageModal('注册失败', '网络错误，请重试', 'error');
     }
@@ -498,6 +504,8 @@ function logout() {
     localStorage.removeItem(USER_SESSION_KEY);
     updateUserUI();
     loadSuggestions(true);
+    // 重新加载聊天消息，更新 isOwn 判断
+    if (isChatWindowOpen) loadChatMessages();
     showMessageModal('已退出', '您已成功退出登录', 'info');
 }
 
@@ -1299,6 +1307,7 @@ function setupFilterAndSearch() {
         </div>
         <div class="filter-tabs">
             <button class="filter-tab active" data-filter="all">全部</button>
+            <button class="filter-tab" data-filter="mine">我的</button>
             <button class="filter-tab" data-filter="learning">学习</button>
             <button class="filter-tab" data-filter="activity">活动</button>
             <button class="filter-tab" data-filter="class">班级</button>
@@ -1357,7 +1366,13 @@ function applyFilterAndSearch() {
     }
 
     // 类型筛选
-    if (currentFilter !== 'all') {
+    if (currentFilter === 'mine') {
+        if (currentUser) {
+            result = result.filter(s => s.userId === currentUser.id);
+        } else {
+            result = result.filter(s => s.anonymousUserId === anonymousUserId);
+        }
+    } else if (currentFilter !== 'all') {
         result = result.filter(s => s.type === currentFilter);
     }
 
