@@ -2161,7 +2161,7 @@ body {
 /* 响应式设计 */
 @media (max-width: 768px) {
     .title {
-        font-size: 2rem;
+        font-size: 1.8rem;
         flex-wrap: wrap;
         justify-content: center;
     }
@@ -3962,7 +3962,7 @@ textarea.input-selector {
     }
 
     .title {
-        font-size: 1.3rem;
+        font-size: 1.8rem;
         gap: 8px;
         flex-wrap: wrap;
     }
@@ -4190,7 +4190,7 @@ textarea.input-selector {
 /* 超小屏幕适配 */
 @media (max-width: 375px) {
     .title {
-        font-size: 1.1rem;
+        font-size: 1.5rem;
     }
 
     .filter-tabs {
@@ -4328,8 +4328,37 @@ textarea.input-selector {
 
 /* 登录模态框 */
 .auth-modal {
+    position: relative;
     max-width: 380px;
     padding: 30px;
+}
+
+.auth-modal .detail-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.auth-modal .detail-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
 }
 
 .auth-tabs {
@@ -4611,6 +4640,7 @@ textarea.input-selector {
     display: flex;
     flex-direction: column;
     max-width: 80%;
+    width: fit-content;
     animation: slideIn 0.3s ease;
 }
 
@@ -4801,17 +4831,31 @@ textarea.input-selector {
         display: none;
     }
 
-    /* 移动端关闭按钮适配 */
+    /* 移动端关闭按钮适配 - 放到窗口上方偏右 */
     .detail-close-btn-outside {
-        top: -10px;
-        right: -10px;
+        top: -40px;
+        right: 5px;
         width: 36px;
         height: 36px;
         font-size: 1rem;
     }
 
+    .auth-modal .detail-close-btn {
+        top: 8px;
+        right: 8px;
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
     .detail-modal-wrapper {
-        width: calc(100% - 40px);
+        width: calc(100% - 30px);
+        padding-right: 0;
+        margin-top: 50px;
+    }
+
+    .detail-modal-wrapper > .modal-content {
+        padding: 20px !important;
     }
 
     .chat-container {
