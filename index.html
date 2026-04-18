@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>我们的土木</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -19,7 +19,23 @@
                 <span class="title-text" id="rainbowTitle"></span>
                 <span class="title-icon">⚡</span>
             </h1>
-            <p class="subtitle">让每一份建议都被听见</p>
+            <div class="header-btns">
+                <div id="userPanel" class="user-panel" style="display: none;">
+                    <span id="userDisplay" class="user-display"></span>
+                    <span id="adminBadge" class="admin-badge" style="display: none;">👑 管理员</span>
+                    <button class="header-btn logout-btn" onclick="logout()">退出</button>
+                </div>
+                <button id="loginBtn" class="header-btn login-header-btn" onclick="showLoginModal()">
+                    <span>👤</span> 登录
+                </button>
+                <button class="header-btn chat-header-btn mobile-only" onclick="toggleChatWindow()">
+                    <span>💬</span> 聊天室
+                    <span class="chat-toggle-badge" id="chatBadge" style="display: none;">0</span>
+                </button>
+                <button class="header-btn announce-header-btn" onclick="showAnnouncementModal()">
+                    <span>📢</span> 公告
+                </button>
+            </div>
         </header>
 
         <!-- 表单区域 -->
@@ -108,15 +124,6 @@
                     已收到的建议
                     <span id="suggestionCount" class="count-badge">0</span>
                 </h2>
-                <div class="header-actions">
-                    <div id="userPanel" class="user-panel" style="display: none;">
-                        <span id="userDisplay" class="user-display"></span>
-                        <button class="logout-btn" onclick="logout()">退出</button>
-                    </div>
-                    <button id="loginBtn" class="login-btn" onclick="showLoginModal()">
-                        <span>👤 登录</span>
-                    </button>
-                </div>
             </div>
             
             <!-- 数据统计面板 -->
@@ -133,13 +140,6 @@
                     <div class="stat-info">
                         <div class="stat-value" id="repliedCount">0</div>
                         <div class="stat-label">已回复</div>
-                    </div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon">⏳</div>
-                    <div class="stat-info">
-                        <div class="stat-value" id="pendingCount">0</div>
-                        <div class="stat-label">待处理</div>
                     </div>
                 </div>
                 <div class="stat-item">
@@ -205,11 +205,11 @@
         </div>
     </div>
 
-    <!-- 底部聊天室切换按钮 -->
-    <div class="chat-toggle-btn" id="chatToggleBtn" onclick="toggleChatWindow()">
+    <!-- 桌面端聊天室浮动按钮 -->
+    <div class="chat-toggle-btn desktop-only" id="chatToggleBtn" onclick="toggleChatWindow()">
         <span class="chat-toggle-icon">💬</span>
         <span class="chat-toggle-text">聊天室</span>
-        <span class="chat-toggle-badge" id="chatBadge" style="display: none;">0</span>
+        <span class="chat-toggle-badge" id="chatBadgeDesktop" style="display: none;">0</span>
     </div>
 
     <!-- 提交成功提示 -->
@@ -317,6 +317,23 @@
                 </div>
                 <button type="submit" class="auth-submit-btn">注册</button>
             </form>
+        </div>
+    </div>
+
+    <!-- 公告弹窗 -->
+    <div id="announcementModal" class="modal">
+        <div class="modal-content glass-effect announce-modal">
+            <button class="detail-close-btn" onclick="closeAnnouncementModal()">✕</button>
+            <h3 class="announce-title">📢 公告栏</h3>
+            <!-- 管理员发布公告 -->
+            <div id="announcePublishSection" class="announce-publish" style="display: none;">
+                <input type="text" id="announceTitleInput" class="announce-input" placeholder="公告标题">
+                <textarea id="announceContentInput" class="announce-textarea" placeholder="公告内容" rows="3"></textarea>
+                <button class="announce-publish-btn" onclick="publishAnnouncement()">发布公告</button>
+            </div>
+            <div id="announcementContent" class="announce-content">
+                <div class="announce-loading">加载中...</div>
+            </div>
         </div>
     </div>
 

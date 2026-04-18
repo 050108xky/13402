@@ -223,6 +223,118 @@ function closeAuthModal() {
     document.getElementById('registerForm').reset();
 }
 
+// 公告栏
+function showAnnouncementModal() {
+    document.getElementById('announcementModal').classList.add('show');
+    // 管理员显示发布区域
+    const publishSection = document.getElementById('announcePublishSection');
+    if (publishSection) {
+        publishSection.style.display = (currentUser && currentUser.isAdmin) ? 'flex' : 'none';
+    }
+    loadAnnouncements();
+}
+
+function closeAnnouncementModal() {
+    document.getElementById('announcementModal').classList.remove('show');
+    // 清空输入
+    const titleInput = document.getElementById('announceTitleInput');
+    const contentInput = document.getElementById('announceContentInput');
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+}
+
+async function loadAnnouncements() {
+    const container = document.getElementById('announcementContent');
+    if (!supabaseClient) {
+        container.innerHTML = '<div class="announce-empty">服务未连接</div>';
+        return;
+    }
+
+    container.innerHTML = '<div class="announce-loading">加载中...</div>';
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="announce-empty">暂无公告</div>';
+            return;
+        }
+
+        const isAdmin = currentUser && currentUser.isAdmin;
+        container.innerHTML = data.map(a => `
+            <div class="announce-item">
+                <div class="announce-item-title">${escapeHtml(a.title)}</div>
+                <div class="announce-item-content">${escapeHtml(a.content)}</div>
+                <div class="announce-item-bottom">
+                    <span class="announce-item-time">${formatChatTime(a.created_at)}</span>
+                    ${isAdmin ? `<button class="announce-delete-btn" onclick="deleteAnnouncement('${a.id}')">删除</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('加载公告失败:', err);
+        container.innerHTML = '<div class="announce-empty">暂无公告</div>';
+    }
+}
+
+async function publishAnnouncement() {
+    const titleInput = document.getElementById('announceTitleInput');
+    const contentInput = document.getElementById('announceContentInput');
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title || !content) {
+        showMessageModal('提示', '请填写公告标题和内容', 'warning');
+        return;
+    }
+
+    if (!supabaseClient || !currentUser || !currentUser.isAdmin) {
+        showMessageModal('错误', '无权发布公告', 'error');
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('announcements')
+            .insert({
+                title: title,
+                content: content,
+                author_id: currentUser.id
+            });
+
+        if (error) throw error;
+
+        titleInput.value = '';
+        contentInput.value = '';
+        loadAnnouncements();
+    } catch (err) {
+        console.error('发布公告失败:', err);
+        showMessageModal('错误', '发布公告失败，请重试', 'error');
+    }
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm('确定删除此公告？')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('announcements')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        loadAnnouncements();
+    } catch (err) {
+        console.error('删除公告失败:', err);
+        showMessageModal('错误', '删除公告失败', 'error');
+    }
+}
+
 // 切换登录/注册标签
 function switchAuthTab(tab) {
     document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
@@ -394,15 +506,18 @@ function updateUserUI() {
     const loginBtn = document.getElementById('loginBtn');
     const userPanel = document.getElementById('userPanel');
     const userDisplay = document.getElementById('userDisplay');
+    const adminBadge = document.getElementById('adminBadge');
 
     if (currentUser) {
         loginBtn.style.display = 'none';
-        userPanel.style.display = 'flex';
+        userPanel.style.display = 'inline-flex';
         userDisplay.textContent = currentUser.displayName;
         userPanel.classList.toggle('admin', currentUser.isAdmin);
+        if (adminBadge) adminBadge.style.display = currentUser.isAdmin ? 'inline-block' : 'none';
     } else {
-        loginBtn.style.display = 'block';
+        loginBtn.style.display = 'inline-flex';
         userPanel.style.display = 'none';
+        if (adminBadge) adminBadge.style.display = 'none';
     }
 
     // 显示/隐藏批量操作工具栏（仅管理员）
@@ -1278,10 +1393,7 @@ function updateStatistics() {
     // 已回复数
     const replied = data.filter(s => s.reply).length;
     document.getElementById('repliedCount').textContent = replied;
-    
-    // 待处理数
-    document.getElementById('pendingCount').textContent = data.length - replied;
-    
+
     // 今日新增
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1899,23 +2011,23 @@ function closeModal() {
 document.addEventListener('click', (e) => {
     const successModal = document.getElementById('successModal');
     const typeModal = document.getElementById('typeModal');
-    const adminModal = document.getElementById('adminLoginModal');
     const confirmModal = document.getElementById('confirmModal');
     const messageModal = document.getElementById('messageModal');
     const detailModal = document.getElementById('detailModal');
+    const announcementModal = document.getElementById('announcementModal');
 
     if (e.target === successModal) {
         closeModal();
     } else if (e.target === typeModal) {
         closeTypeModal();
-    } else if (e.target === adminModal) {
-        closeAdminLogin();
     } else if (e.target === confirmModal) {
         closeConfirmModal();
     } else if (e.target === messageModal) {
         closeMessageModal();
     } else if (e.target === detailModal) {
         closeDetailModal();
+    } else if (e.target === announcementModal) {
+        closeAnnouncementModal();
     }
 });
 
@@ -1923,11 +2035,12 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeModal();
-        closeAdminLogin();
         closeTypeModal();
         closeConfirmModal();
         closeMessageModal();
         closeDetailModal();
+        closeAnnouncementModal();
+        closeAuthModal();
     }
 });
 
@@ -3063,7 +3176,8 @@ const CHAT_WITHDRAW_TIME = 5 * 60 * 1000; // 5分钟（毫秒）
 // 切换聊天窗口显示/隐藏
 function toggleChatWindow() {
     const chatWindow = document.getElementById('chatWindow');
-    const toggleBtn = document.getElementById('chatToggleBtn');
+    const desktopBtn = document.getElementById('chatToggleBtn');
+    const mobileBtn = document.querySelector('.chat-header-btn');
 
     if (!chatWindow) return;
 
@@ -3071,7 +3185,8 @@ function toggleChatWindow() {
 
     if (isChatWindowOpen) {
         chatWindow.classList.add('show');
-        toggleBtn.classList.add('active');
+        if (desktopBtn) desktopBtn.classList.add('active');
+        if (mobileBtn) mobileBtn.classList.add('active');
         // 清空未读消息数
         unreadChatCount = 0;
         updateChatBadge();
@@ -3084,21 +3199,28 @@ function toggleChatWindow() {
         }, 300);
     } else {
         chatWindow.classList.remove('show');
-        toggleBtn.classList.remove('active');
+        if (desktopBtn) desktopBtn.classList.remove('active');
+        if (mobileBtn) mobileBtn.classList.remove('active');
     }
 }
 
 // 更新聊天室消息徽章
 function updateChatBadge() {
-    const badge = document.getElementById('chatBadge');
-    if (!badge) return;
+    const desktopBadge = document.getElementById('chatBadgeDesktop');
+    const mobileBadge = document.getElementById('chatBadge');
 
-    if (unreadChatCount > 0 && !isChatWindowOpen) {
-        badge.textContent = unreadChatCount > 99 ? '99+' : unreadChatCount;
-        badge.style.display = 'flex';
-    } else {
-        badge.style.display = 'none';
-    }
+    const show = unreadChatCount > 0 && !isChatWindowOpen;
+    const text = unreadChatCount > 99 ? '99+' : unreadChatCount;
+
+    [desktopBadge, mobileBadge].forEach(badge => {
+        if (!badge) return;
+        if (show) {
+            badge.textContent = text;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    });
 }
 
 // 加载聊天消息
@@ -3122,10 +3244,10 @@ async function loadChatMessages() {
                     <p>暂无消息，来发起话题吧！</p>
                 </div>
             `;
-            return;
+        } else {
+            renderChatMessages(data);
         }
 
-        renderChatMessages(data);
         scrollToChatBottom();
 
         // 确保实时订阅已启用（如果之前未成功）
