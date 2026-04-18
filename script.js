@@ -3309,61 +3309,53 @@ async function deleteChatMessage(messageId) {
     });
 }
 
-// 设置聊天实时订阅 - 在初始化时调用
+// 设置聊天实时订阅
 function setupChatRealtimeSubscription() {
-    if (!supabaseClient) {
-        console.log('Supabase 未初始化，无法订阅聊天');
-        return;
-    }
+    if (!supabaseClient) return;
 
-    // 如果已经有频道，先移除
     if (chatChannel) {
         chatChannel.unsubscribe();
     }
 
-    console.log('正在设置聊天实时订阅...');
-
-    try {
-        chatChannel = supabaseClient
-            .channel('chat-changes', {
-                config: {
-                    broadcast: { self: true }
-                }
-            })
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'chat_messages'
-                },
-                (payload) => {
-                    console.log('收到新聊天消息:', payload.new);
-                    const msg = payload.new;
-                    addChatMessage(msg);
-                }
-            )
-            .subscribe((status, err) => {
-                console.log('聊天订阅状态:', status);
-                if (err) {
-                    console.error('订阅错误:', err);
-                }
-                if (status === 'SUBSCRIBED') {
-                    console.log('聊天实时订阅成功！');
-                }
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.log('订阅失败，5秒后重试...');
-                    setTimeout(setupChatRealtimeSubscription, 5000);
-                }
-            });
-    } catch (error) {
-        console.error('设置聊天订阅失败:', error);
-    }
+    chatChannel = supabaseClient
+        .channel('chat-changes')
+        .on(
+            'postgres_changes',
+            {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'chat_messages'
+            },
+            (payload) => {
+                const msg = payload.new;
+                addChatMessage(msg);
+            }
+        )
+        .on(
+            'postgres_changes',
+            {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'chat_messages'
+            },
+            (payload) => {
+                const msgId = payload.old.id;
+                removeChatMessage(msgId);
+            }
+        )
+        .subscribe();
 }
 
-// 订阅聊天消息（兼容旧版本调用）
-function subscribeToChat() {
-    setupChatRealtimeSubscription();
+// 从列表移除消息（撤回/删除时实时同步）
+function removeChatMessage(msgId) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const msgEl = container.querySelector(`.chat-message[data-id="${msgId}"]`);
+    if (msgEl) {
+        msgEl.style.animation = 'fadeOut 0.3s ease forwards';
+        setTimeout(() => msgEl.remove(), 300);
+    }
 }
 
 // 添加新消息到列表
