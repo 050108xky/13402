@@ -264,6 +264,7 @@ body {
     width: 90%;
     max-height: 70vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 30px;
     text-align: left;
 }
@@ -2354,6 +2355,8 @@ body {
 
 .modal.show {
     display: flex;
+    overflow: hidden;
+    overscroll-behavior: contain;
 }
 
 .modal.show ~ .container {
@@ -2369,6 +2372,9 @@ body {
     text-align: center;
     max-width: 400px;
     width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     animation: scaleIn 0.3s ease;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
@@ -4590,6 +4596,7 @@ textarea.input-selector {
     position: relative;
     max-width: 380px;
     padding: 30px;
+    overscroll-behavior: contain;
 }
 
 .auth-modal .detail-close-btn {
@@ -4741,6 +4748,7 @@ textarea.input-selector {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    overscroll-behavior: contain;
 }
 
 .chat-window-header {
@@ -4861,6 +4869,7 @@ textarea.input-selector {
 .chat-window .chat-messages {
     flex: 1;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 15px;
     background: rgba(0, 0, 0, 0.2);
     display: flex;
@@ -4872,6 +4881,7 @@ textarea.input-selector {
 .chat-messages {
     height: 400px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 15px;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 12px;
