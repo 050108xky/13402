@@ -4831,10 +4831,10 @@ textarea.input-selector {
         display: none;
     }
 
-    /* 移动端关闭按钮适配 - 放到窗口上方偏右 */
+    /* 移动端关闭按钮 - 放到窗口上方偏右 */
     .detail-close-btn-outside {
-        top: -40px;
-        right: 5px;
+        top: -44px;
+        right: 10px;
         width: 36px;
         height: 36px;
         font-size: 1rem;
@@ -4849,13 +4849,23 @@ textarea.input-selector {
     }
 
     .detail-modal-wrapper {
-        width: calc(100% - 30px);
+        width: 92%;
+        max-width: none;
         padding-right: 0;
-        margin-top: 50px;
+        padding-top: 0;
     }
 
     .detail-modal-wrapper > .modal-content {
         padding: 20px !important;
+    }
+
+    .detail-modal {
+        max-height: 70vh;
+    }
+
+    #detailModal.modal.show {
+        align-items: flex-start;
+        padding-top: 60px;
     }
 
     .chat-container {
