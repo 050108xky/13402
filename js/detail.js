@@ -224,6 +224,11 @@ async function submitComment() {
 
         input.value = '';
         loadComments(currentDetailSuggestionId);
+
+        // 评论 +2 EXP
+        if (currentUser) {
+            addUserExp(currentUser.id, 2, 'comment');
+        }
     } catch (error) {
         console.error('提交评论失败:', error);
         showMessageModal('错误', '评论发送失败，请重试', 'error');

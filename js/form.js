@@ -393,6 +393,12 @@ async function handleSubmit(e) {
 
         showSuccessModal();
 
+        // 提交建议加经验 +5，带图片 +8
+        if (currentUser) {
+            const hasImages = imageUrls && imageUrls.length > 0;
+            addUserExp(currentUser.id, hasImages ? 8 : 5, 'suggestion');
+        }
+
         // 提交成功后自动滚动到建议列表
         setTimeout(() => {
             document.querySelector('.suggestions-container').scrollIntoView({ behavior: 'smooth', block: 'start' });

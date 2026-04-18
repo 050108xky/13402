@@ -98,6 +98,11 @@ async function handleSuggestionChange(payload) {
         if (isMajorUpdate) {
             applyFilterAndSearch();
 
+            // 建议被管理员回复 +3 EXP（给建议作者）
+            if (replyChanged && newRecord.reply && !oldReply && newRecord.user_id) {
+                addUserExp(newRecord.user_id, 3, 'replied');
+            }
+
             if (newRecord.reply && newRecord.anonymous_user_id === anonymousUserId) {
                 if (oldReply !== newRecord.reply) {
                     showNewReplyToast();
@@ -141,6 +146,11 @@ async function handleLikeChange(payload) {
     if (!suggestion) return;
 
     const localCount = suggestion.likesCount || 0;
+
+    // 被点赞 +1 EXP（仅INSERT，给建议作者）
+    if (eventType === 'INSERT' && suggestion.userId) {
+        addUserExp(suggestion.userId, 1, 'liked');
+    }
 
     const { data } = await supabaseClient
         .from('suggestions')

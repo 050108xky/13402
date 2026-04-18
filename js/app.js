@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 恢复用户登录状态
     restoreUserSession();
 
+    // 加载当前用户经验数据
+    loadCurrentUserExp();
+
+    // 加载管理员用户ID
+    loadAdminUserIds();
+
     // 加载用户点赞记录
     loadUserLikes();
 

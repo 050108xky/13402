@@ -23,6 +23,36 @@
 - **评论**：支持匿名评论，管理员可删除任意评论
 - **管理员回复**：管理员可直接回复建议，用户收到实时通知
 
+### 等级系统
+- **9 级称号**：根据土木行业职业阶梯设计，从勘察员到功勋总师
+- **自动升级**：通过提交建议、评论、聊天等行为获取经验值，自动提升等级
+- **等级展示**：用户面板显示等级徽章，聊天室消息旁显示等级标签
+- **管理员独立**：管理员显示金色 `👑 管理员` 标识，不参与等级系统
+
+| 等级 | 称号 | 气泡色 | 累计EXP |
+|------|------|--------|---------|
+| LV1~9 | 勘察员 | 浅灰 | 0 |
+| LV10~19 | 设计师 | 天青 | 72 |
+| LV20~29 | 结构师 | 深海蓝 | 232 |
+| LV30~39 | 项目负责人 | 墨绿 | 512 |
+| LV40~49 | 技术负责人 | 暗紫 | 962 |
+| LV50~59 | 工程总监 | 酒红 | 1642 |
+| LV60~69 | 总工程师 | 钛钢银 | 2592 |
+| LV70~79 | 勘察设计大师 | 翡翠 | 3892 |
+| LV80+ | 功勋总师 | 流光虹彩 | 5642 |
+
+**经验获取规则：**
+
+| 行为 | EXP | 限制 |
+|------|-----|------|
+| 提交建议 | +5 | 无 |
+| 提交带图建议 | +8 | 无 |
+| 发表评论 | +2 | 每日10条 |
+| 聊天发言 | +1 | 每日10条 |
+| 建议被点赞 | +1 | 被动，无上限 |
+| 建议被管理员回复 | +3 | 被动，无上限 |
+| 每日首次活跃 | +2 | 每日1次 |
+
 ### 聊天室
 - **实时聊天**：基于 Supabase Realtime，消息即时同步
 - **匿名发送**：已登录用户可选择匿名
@@ -67,6 +97,7 @@ js/
 ├── state.js           常量与全局状态变量
 ├── utils.js           工具函数（时间格式化、HTML转义等）
 ├── supabase-init.js   Supabase 客户端初始化
+├── levels.js          等级系统（经验计算、升级逻辑、等级标签）
 ├── modals.js          通用弹窗（确认框、消息框、类型选择）
 ├── auth.js            登录 / 注册 / 登出
 ├── announcements.js   公告系统
@@ -91,12 +122,20 @@ js/
 | `chat_messages` | 聊天消息表 |
 | `announcements` | 公告表 |
 | `users` | 用户表 |
+| `user_exp` | 用户经验表 |
 
 ## 部署
 
 ### 1. Supabase 配置
 
-在 Supabase 控制台创建以上数据表，然后在项目根目录的 `config.js` 中填入你的 Supabase 项目 URL 和 anon key：
+在 Supabase SQL Editor 中依次执行以下 SQL 文件创建数据表：
+
+- `setup_online_users_table.sql` — 在线用户表
+- `setup_user_exp_table.sql` — 用户经验表
+
+其余表（`suggestions`、`comments`、`likes`、`chat_messages`、`announcements`、`users`）需手动创建或通过 Supabase 控制台添加。
+
+然后在项目根目录的 `config.js` 中填入你的 Supabase 项目 URL 和 key：
 
 ```javascript
 window.supabaseConfig = {
@@ -135,6 +174,7 @@ npx serve .
 │   ├── state.js
 │   ├── utils.js
 │   ├── supabase-init.js
+│   ├── levels.js
 │   ├── modals.js
 │   ├── auth.js
 │   ├── announcements.js
@@ -148,6 +188,7 @@ npx serve .
 │   ├── notifications.js
 │   └── app.js
 ├── setup_online_users_table.sql   在线用户表建表 SQL
+├── setup_user_exp_table.sql       用户经验表建表 SQL
 └── .gitignore
 ```
 

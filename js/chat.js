@@ -72,6 +72,9 @@ async function loadChatMessages() {
                 </div>
             `;
         } else {
+            // 批量获取消息作者的经验数据
+            const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
+            await fetchUserExpBatch(userIds);
             renderChatMessages(data);
         }
 
@@ -103,10 +106,15 @@ function renderChatMessages(messages) {
 
         const canAdminDelete = isAdmin;
 
+        // 获取等级信息（管理员显示管理员标签）
+        const isAdminUser = msg.user_id && adminUserIds.has(msg.user_id);
+        const levelInfo = (!isAdminUser && msg.user_id) ? getUserLevelInfo(msg.user_id) : null;
+
         return `
-            <div class="chat-message ${isOwn ? 'own-message' : ''} ${msg.user_id && isAdmin && !isOwn ? 'admin' : ''}" data-id="${msg.id}">
+            <div class="chat-message ${isOwn ? 'own-message' : ''} ${isAdminUser && !isOwn ? 'admin' : ''}" data-id="${msg.id}">
                 <div class="chat-message-header">
                     <span class="chat-message-author">${msg.is_anonymous ? '👤 匿名用户' : escapeHtml(msg.author_name)}</span>
+                    ${isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : '')}
                     <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
                 </div>
                 <div class="chat-message-content">${escapeHtml(msg.content)}</div>
@@ -171,6 +179,11 @@ async function sendChatMessage() {
         // 如果实时订阅未生效，手动添加消息到列表
         if (data && data[0]) {
             addChatMessage(data[0]);
+        }
+
+        // 聊天发言 +1 EXP
+        if (currentUser) {
+            addUserExp(currentUser.id, 1, 'chat');
         }
 
     } catch (e) {
@@ -301,16 +314,21 @@ function addChatMessage(msg) {
                   msg.anonymous_user_id === anonymousUserId;
     const isAdmin = currentUser && currentUser.isAdmin;
 
+    // 获取等级信息（管理员显示管理员标签）
+    const isAdminUser = msg.user_id && adminUserIds.has(msg.user_id);
+    const levelInfo = (!isAdminUser && msg.user_id) ? getUserLevelInfo(msg.user_id) : null;
+
     // 新消息可以撤回（自己的消息）
     const canWithdraw = isOwn;
     const canAdminDelete = isAdmin && !isOwn;
 
     const msgEl = document.createElement('div');
-    msgEl.className = `chat-message ${isOwn ? 'own-message' : ''}`;
+    msgEl.className = `chat-message ${isOwn ? 'own-message' : ''} ${isAdminUser && !isOwn ? 'admin' : ''}`;
     msgEl.dataset.id = msg.id;
     msgEl.innerHTML = `
         <div class="chat-message-header">
             <span class="chat-message-author">${msg.is_anonymous ? '👤 匿名用户' : escapeHtml(msg.author_name)}</span>
+            ${isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : '')}
             <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
         </div>
         <div class="chat-message-content">${escapeHtml(msg.content)}</div>

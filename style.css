@@ -206,6 +206,57 @@ body {
     white-space: nowrap;
 }
 
+/* 等级徽章 - 用户面板 */
+.level-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+.level-badge.rainbow {
+    background: linear-gradient(90deg, #00d4ff, #00ff88, #7b2cbf, #00d4ff);
+    background-size: 300% 100%;
+    animation: levelRainbow 3s linear infinite;
+    color: white;
+    border: none;
+}
+
+/* 等级标签 - 聊天室 */
+.chat-level-tag {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 6px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.3;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.chat-level-tag.admin-tag {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    color: #ffc107;
+}
+
+.chat-level-tag.rainbow {
+    background: linear-gradient(90deg, #00d4ff, #00ff88, #7b2cbf, #00d4ff);
+    background-size: 300% 100%;
+    animation: levelRainbow 3s linear infinite;
+    color: white;
+    border: none;
+}
+
+@keyframes levelRainbow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+
 /* 公告弹窗样式 */
 .announce-modal {
     position: relative;

@@ -98,6 +98,9 @@ async function handleLogin(e) {
         // 重新加载聊天消息，更新 isOwn 判断
         if (isChatWindowOpen) loadChatMessages();
 
+        // 加载用户等级经验
+        loadCurrentUserExp();
+
     } catch (err) {
         showMessageModal('登录失败', '网络错误，请重试', 'error');
     }
@@ -181,6 +184,9 @@ async function handleRegister(e) {
         // 重新加载聊天消息
         if (isChatWindowOpen) loadChatMessages();
 
+        // 创建用户经验记录
+        loadCurrentUserExp();
+
     } catch (err) {
         showMessageModal('注册失败', '网络错误，请重试', 'error');
     }
@@ -194,6 +200,7 @@ function logout() {
     currentUser = null;
     isAdminMode = false;
     localStorage.removeItem(USER_SESSION_KEY);
+    clearCurrentUserExp();
     updateUserUI();
     loadSuggestions(true);
     // 重新加载聊天消息，更新 isOwn 判断
@@ -231,4 +238,7 @@ function updateUserUI() {
     if (chatAnonymousLabel) {
         chatAnonymousLabel.style.display = currentUser ? 'flex' : 'none';
     }
+
+    // 更新等级徽章
+    updateUserLevelBadge();
 }
