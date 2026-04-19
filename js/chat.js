@@ -313,6 +313,7 @@ async function sendChatMessage() {
         input.value = content;
         // 显示详细错误信息
         const errorMsg = e.message || e.error?.message || '发送失败，请重试';
+        alert('发送失败: ' + errorMsg);
         showMessageModal('错误', '发送失败: ' + errorMsg, 'error');
     }
 
