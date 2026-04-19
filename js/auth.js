@@ -273,3 +273,99 @@ function updateUserUI() {
     // 更新等级徽章
     updateUserLevelBadge();
 }
+
+// ========== 忘记密码功能 ==========
+
+let resetTargetUserId = null;
+
+// 显示忘记密码模态框
+function showForgotPasswordModal() {
+    closeAuthModal();
+    document.getElementById('forgotPasswordModal').classList.add('show');
+    document.getElementById('forgotStep1').style.display = 'block';
+    document.getElementById('forgotStep2').style.display = 'none';
+    document.getElementById('forgotUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('newPasswordConfirm').value = '';
+    resetTargetUserId = null;
+    pushModalHistory('forgotPasswordModal');
+}
+
+// 关闭忘记密码模态框
+function closeForgotPasswordModal() {
+    document.getElementById('forgotPasswordModal').classList.remove('show');
+    popModalHistory('forgotPasswordModal');
+}
+
+// 查找用户
+async function findUserForReset() {
+    const username = document.getElementById('forgotUsername').value.trim();
+
+    if (!username) {
+        showMessageModal('错误', '请输入用户名', 'error');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('users')
+            .select('id, username')
+            .eq('username', username)
+            .single();
+
+        if (error || !data) {
+            showMessageModal('错误', '用户名不存在', 'error');
+            return;
+        }
+
+        resetTargetUserId = data.id;
+        document.getElementById('resetTargetUser').textContent = data.username;
+        document.getElementById('forgotStep1').style.display = 'none';
+        document.getElementById('forgotStep2').style.display = 'block';
+
+    } catch (err) {
+        showMessageModal('错误', '查询失败，请重试', 'error');
+    }
+}
+
+// 重置密码
+async function resetPassword() {
+    const newPassword = document.getElementById('newPassword').value;
+    const newPasswordConfirm = document.getElementById('newPasswordConfirm').value;
+
+    if (!newPassword) {
+        showMessageModal('错误', '请输入新密码', 'error');
+        return;
+    }
+
+    if (newPassword.length < 4) {
+        showMessageModal('错误', '密码至少4个字符', 'error');
+        return;
+    }
+
+    if (newPassword !== newPasswordConfirm) {
+        showMessageModal('错误', '两次输入的密码不一致', 'error');
+        return;
+    }
+
+    try {
+        // 哈希新密码
+        const hashedPassword = await hashPassword(newPassword);
+
+        const { error } = await supabaseClient
+            .from('users')
+            .update({ password_hash: hashedPassword })
+            .eq('id', resetTargetUserId);
+
+        if (error) {
+            throw error;
+        }
+
+        showMessageModal('成功', '密码已重置，请使用新密码登录', 'success');
+        closeForgotPasswordModal();
+        showLoginModal();
+
+    } catch (err) {
+        showMessageModal('错误', '重置失败，请重试', 'error');
+    }
+}

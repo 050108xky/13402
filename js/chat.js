@@ -307,7 +307,9 @@ async function sendChatMessage() {
         }
         // 恢复输入框内容
         input.value = content;
-        showMessageModal('错误', '发送失败，请重试', 'error');
+        // 显示详细错误信息
+        const errorMsg = e.message || e.error?.message || '发送失败，请重试';
+        showMessageModal('错误', '发送失败: ' + errorMsg, 'error');
     }
 
     if (btn) btn.disabled = false;

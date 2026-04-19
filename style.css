@@ -4707,6 +4707,46 @@ textarea.input-selector {
     transform: none;
 }
 
+/* 忘记密码链接 */
+.auth-links {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.forgot-password-link {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.forgot-password-link:hover {
+    color: #00d4ff;
+}
+
+/* 忘记密码模态框标题 */
+.auth-title {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #fff;
+    font-size: 20px;
+}
+
+/* 重置密码用户信息 */
+.reset-user-info {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 8px;
+}
+
+.reset-user-info span {
+    color: #00d4ff;
+    font-weight: bold;
+}
+
 /* 我的建议标记 */
 .my-suggestion-badge {
     display: inline-flex;
