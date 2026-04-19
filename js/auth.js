@@ -1,3 +1,20 @@
+// ========== 密码哈希工具函数 ==========
+
+// 使用 Web Crypto API 进行密码哈希 (SHA-256)
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// 验证密码
+async function verifyPassword(password, hashedPassword) {
+    const hash = await hashPassword(password);
+    return hash === hashedPassword;
+}
+
 // ========== 用户认证 ==========
 
 // 恢复用户登录状态
@@ -68,7 +85,9 @@ async function handleLogin(e) {
             return;
         }
 
-        if (data.password_hash !== password) {
+        // 使用哈希验证密码
+        const isValid = await verifyPassword(password, data.password_hash);
+        if (!isValid) {
             showMessageModal('登录失败', '密码错误', 'error');
             btn.disabled = false;
             btn.textContent = '登录';
@@ -145,11 +164,14 @@ async function handleRegister(e) {
     btn.textContent = '注册中...';
 
     try {
+        // 对密码进行哈希处理
+        const hashedPassword = await hashPassword(password);
+
         const { data, error } = await supabaseClient
             .from('users')
             .insert([{
                 username: username,
-                password_hash: password,
+                password_hash: hashedPassword,
                 display_name: displayName || username,
                 is_admin: false
             }])
