@@ -71,7 +71,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadSuggestions();
     checkNewReplies();
     setupNotifications();
-    setupRealtimeSubscriptions();  // 启用实时订阅
+    setupRealtimeSubscriptions();  // 启用建议实时订阅
+    setupChatRealtimeSubscription();  // 启用聊天实时订阅
     setupPullToRefresh();  // 启用下拉刷新
     loadChatMessages();  // 加载聊天消息
     setupChatInput();  // 设置聊天输入
@@ -167,10 +168,16 @@ async function initializeSupabase() {
                 window.supabaseConfig.anonKey,
                 {
                     auth: { persistSession: false },
-                    realtime: { enabled: true }
+                    realtime: {
+                        enabled: true,
+                        timeout: 20000,
+                        heartbeatIntervalMs: 15000
+                    }
                 }
             );
+            console.log('Supabase 客户端初始化成功');
         } catch (error) {
+            console.error('Supabase 初始化失败:', error);
             showMessageModal('连接失败', '数据库连接失败: ' + error.message, 'error');
         }
     } else {
@@ -214,6 +221,118 @@ function closeAuthModal() {
     document.getElementById('authModal').classList.remove('show');
     document.getElementById('loginForm').reset();
     document.getElementById('registerForm').reset();
+}
+
+// 公告栏
+function showAnnouncementModal() {
+    document.getElementById('announcementModal').classList.add('show');
+    // 管理员显示发布区域
+    const publishSection = document.getElementById('announcePublishSection');
+    if (publishSection) {
+        publishSection.style.display = (currentUser && currentUser.isAdmin) ? 'flex' : 'none';
+    }
+    loadAnnouncements();
+}
+
+function closeAnnouncementModal() {
+    document.getElementById('announcementModal').classList.remove('show');
+    // 清空输入
+    const titleInput = document.getElementById('announceTitleInput');
+    const contentInput = document.getElementById('announceContentInput');
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+}
+
+async function loadAnnouncements() {
+    const container = document.getElementById('announcementContent');
+    if (!supabaseClient) {
+        container.innerHTML = '<div class="announce-empty">服务未连接</div>';
+        return;
+    }
+
+    container.innerHTML = '<div class="announce-loading">加载中...</div>';
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="announce-empty">暂无公告</div>';
+            return;
+        }
+
+        const isAdmin = currentUser && currentUser.isAdmin;
+        container.innerHTML = data.map(a => `
+            <div class="announce-item">
+                <div class="announce-item-title">${escapeHtml(a.title)}</div>
+                <div class="announce-item-content">${escapeHtml(a.content)}</div>
+                <div class="announce-item-bottom">
+                    <span class="announce-item-time">${formatChatTime(a.created_at)}</span>
+                    ${isAdmin ? `<button class="announce-delete-btn" onclick="deleteAnnouncement('${a.id}')">删除</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('加载公告失败:', err);
+        container.innerHTML = '<div class="announce-empty">暂无公告</div>';
+    }
+}
+
+async function publishAnnouncement() {
+    const titleInput = document.getElementById('announceTitleInput');
+    const contentInput = document.getElementById('announceContentInput');
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title || !content) {
+        showMessageModal('提示', '请填写公告标题和内容', 'warning');
+        return;
+    }
+
+    if (!supabaseClient || !currentUser || !currentUser.isAdmin) {
+        showMessageModal('错误', '无权发布公告', 'error');
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from('announcements')
+            .insert({
+                title: title,
+                content: content,
+                author_id: currentUser.id
+            });
+
+        if (error) throw error;
+
+        titleInput.value = '';
+        contentInput.value = '';
+        loadAnnouncements();
+    } catch (err) {
+        console.error('发布公告失败:', err);
+        showMessageModal('错误', '发布公告失败，请重试', 'error');
+    }
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm('确定删除此公告？')) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('announcements')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        loadAnnouncements();
+    } catch (err) {
+        console.error('删除公告失败:', err);
+        showMessageModal('错误', '删除公告失败', 'error');
+    }
 }
 
 // 切换登录/注册标签
@@ -283,6 +402,9 @@ async function handleLogin(e) {
 
         // 重新加载建议
         loadSuggestions(true);
+
+        // 重新加载聊天消息，更新 isOwn 判断
+        if (isChatWindowOpen) loadChatMessages();
 
     } catch (err) {
         showMessageModal('登录失败', '网络错误，请重试', 'error');
@@ -364,6 +486,9 @@ async function handleRegister(e) {
 
         showMessageModal('注册成功', `欢迎，${currentUser.displayName}！`, 'success');
 
+        // 重新加载聊天消息
+        if (isChatWindowOpen) loadChatMessages();
+
     } catch (err) {
         showMessageModal('注册失败', '网络错误，请重试', 'error');
     }
@@ -379,6 +504,8 @@ function logout() {
     localStorage.removeItem(USER_SESSION_KEY);
     updateUserUI();
     loadSuggestions(true);
+    // 重新加载聊天消息，更新 isOwn 判断
+    if (isChatWindowOpen) loadChatMessages();
     showMessageModal('已退出', '您已成功退出登录', 'info');
 }
 
@@ -387,15 +514,18 @@ function updateUserUI() {
     const loginBtn = document.getElementById('loginBtn');
     const userPanel = document.getElementById('userPanel');
     const userDisplay = document.getElementById('userDisplay');
+    const adminBadge = document.getElementById('adminBadge');
 
     if (currentUser) {
         loginBtn.style.display = 'none';
-        userPanel.style.display = 'flex';
+        userPanel.style.display = 'inline-flex';
         userDisplay.textContent = currentUser.displayName;
         userPanel.classList.toggle('admin', currentUser.isAdmin);
+        if (adminBadge) adminBadge.style.display = currentUser.isAdmin ? 'inline-block' : 'none';
     } else {
-        loginBtn.style.display = 'block';
+        loginBtn.style.display = 'inline-flex';
         userPanel.style.display = 'none';
+        if (adminBadge) adminBadge.style.display = 'none';
     }
 
     // 显示/隐藏批量操作工具栏（仅管理员）
@@ -716,12 +846,27 @@ function closeImageViewer() {
     }
 }
 
+// 设置弹窗滚动弹性效果
+function setupModalScrollBounce(modal) {
+    // 使用 CSS overscroll-behavior 原生弹性滚动
+    // 无需 JavaScript 干预，性能更好
+}
+
+// 移除弹窗滚动弹性效果
+function removeModalScrollBounce(modal) {
+    // 无需清理
+}
+
 // 关闭详情模态框
 function closeDetailModal() {
     const modal = document.getElementById('detailModal');
     if (modal) {
+        // 移除滚动弹性效果
+        removeModalScrollBounce(modal);
         modal.classList.remove('show');
     }
+    // 恢复底层页面滚动
+    document.body.style.overflow = '';
 }
 
 // ==================== 评论功能 ====================
@@ -805,6 +950,12 @@ function showDetailModal(suggestion) {
     loadComments(suggestion.id);
 
     modal.classList.add('show');
+    
+    // 锁定底层页面滚动
+    document.body.style.overflow = 'hidden';
+    
+    // 设置弹窗滚动弹性效果
+    setupModalScrollBounce(modal);
 }
 
 // 单独查询并加载详情图片
@@ -993,12 +1144,6 @@ async function handleSubmit(e) {
         return;
     }
 
-    if (!suggestion) {
-        showMessageModal('输入错误', '请输入具体意见', 'warning');
-        suggestionInput.focus();
-        return;
-    }
-
     if ((isAnonymous || isAdminOnly) && !name) {
         name = '匿名用户';
     }
@@ -1162,6 +1307,7 @@ function setupFilterAndSearch() {
         </div>
         <div class="filter-tabs">
             <button class="filter-tab active" data-filter="all">全部</button>
+            <button class="filter-tab" data-filter="mine">我的</button>
             <button class="filter-tab" data-filter="learning">学习</button>
             <button class="filter-tab" data-filter="activity">活动</button>
             <button class="filter-tab" data-filter="class">班级</button>
@@ -1220,7 +1366,13 @@ function applyFilterAndSearch() {
     }
 
     // 类型筛选
-    if (currentFilter !== 'all') {
+    if (currentFilter === 'mine') {
+        if (currentUser) {
+            result = result.filter(s => s.userId === currentUser.id);
+        } else {
+            result = result.filter(s => s.anonymousUserId === anonymousUserId);
+        }
+    } else if (currentFilter !== 'all') {
         result = result.filter(s => s.type === currentFilter);
     }
 
@@ -1256,10 +1408,7 @@ function updateStatistics() {
     // 已回复数
     const replied = data.filter(s => s.reply).length;
     document.getElementById('repliedCount').textContent = replied;
-    
-    // 待处理数
-    document.getElementById('pendingCount').textContent = data.length - replied;
-    
+
     // 今日新增
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1877,23 +2026,23 @@ function closeModal() {
 document.addEventListener('click', (e) => {
     const successModal = document.getElementById('successModal');
     const typeModal = document.getElementById('typeModal');
-    const adminModal = document.getElementById('adminLoginModal');
     const confirmModal = document.getElementById('confirmModal');
     const messageModal = document.getElementById('messageModal');
     const detailModal = document.getElementById('detailModal');
+    const announcementModal = document.getElementById('announcementModal');
 
     if (e.target === successModal) {
         closeModal();
     } else if (e.target === typeModal) {
         closeTypeModal();
-    } else if (e.target === adminModal) {
-        closeAdminLogin();
     } else if (e.target === confirmModal) {
         closeConfirmModal();
     } else if (e.target === messageModal) {
         closeMessageModal();
     } else if (e.target === detailModal) {
         closeDetailModal();
+    } else if (e.target === announcementModal) {
+        closeAnnouncementModal();
     }
 });
 
@@ -1901,11 +2050,12 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeModal();
-        closeAdminLogin();
         closeTypeModal();
         closeConfirmModal();
         closeMessageModal();
         closeDetailModal();
+        closeAnnouncementModal();
+        closeAuthModal();
     }
 });
 
@@ -2863,25 +3013,64 @@ async function handleSuggestionChange(payload) {
     } else if (eventType === 'UPDATE') {
         // 更新建议：更新本地数据
         const index = allSuggestions.findIndex(s => s.id === newRecord.id);
-        if (index !== -1) {
-            allSuggestions[index] = {
-                ...allSuggestions[index],
-                name: newRecord.name,
-                type: newRecord.type,
-                suggestion: newRecord.content,
-                reply: newRecord.reply,
-                replyTime: newRecord.reply_time,
-                likesCount: newRecord.likes_count,
-                commentsCount: newRecord.comments_count
-            };
+        if (index === -1) return;
+
+        const suggestion = allSuggestions[index];
+        const oldLikes = suggestion.likesCount;
+        const oldComments = suggestion.commentsCount;
+        const oldReply = suggestion.reply;
+        const oldContent = suggestion.suggestion;
+
+        // 更新本地数据
+        allSuggestions[index] = {
+            ...suggestion,
+            name: newRecord.name,
+            type: newRecord.type,
+            suggestion: newRecord.content,
+            reply: newRecord.reply,
+            replyTime: newRecord.reply_time,
+            likesCount: newRecord.likes_count || 0,
+            commentsCount: newRecord.comments_count || 0
+        };
+
+        // 判断是否是重要更新（内容或回复变化）还是次要更新（点赞/评论数）
+        const contentChanged = oldContent !== newRecord.content;
+        const replyChanged = oldReply !== newRecord.reply;
+        const likesChanged = oldLikes !== (newRecord.likes_count || 0);
+        const commentsChanged = oldComments !== (newRecord.comments_count || 0);
+        const isMajorUpdate = contentChanged || replyChanged;
+
+        if (isMajorUpdate) {
+            // 内容或回复变化：重新渲染整个列表
             applyFilterAndSearch();
 
             // 如果有新回复且是自己提交的建议，显示通知
             if (newRecord.reply && newRecord.anonymous_user_id === anonymousUserId) {
-                const oldReply = oldRecord?.reply;
                 if (oldReply !== newRecord.reply) {
                     showNewReplyToast();
                     sendBrowserNotification('收到新回复', '您的建议有了新的回复！');
+                }
+            }
+        } else {
+            // 只是点赞/评论数变化：局部更新，不重新渲染
+            const card = document.querySelector(`[data-suggestion-id="${newRecord.id}"]`);
+            if (card) {
+                // 更新点赞数
+                if (likesChanged) {
+                    const likeBtn = card.querySelector('.like-btn');
+                    if (likeBtn) {
+                        const countSpan = likeBtn.querySelector('.like-count');
+                        if (countSpan) {
+                            countSpan.textContent = newRecord.likes_count || 0;
+                        }
+                    }
+                }
+                // 更新评论数
+                if (commentsChanged) {
+                    const commentDisplay = card.querySelector('.comment-count-display');
+                    if (commentDisplay) {
+                        commentDisplay.textContent = `💬 ${newRecord.comments_count || 0}`;
+                    }
                 }
             }
         }
@@ -2899,6 +3088,12 @@ async function handleLikeChange(payload) {
     // 获取该建议的ID
     const suggestionId = eventType === 'INSERT' ? newRecord.suggestion_id : oldRecord.suggestion_id;
 
+    // 获取本地当前点赞数
+    const suggestion = allSuggestions.find(s => s.id === suggestionId);
+    if (!suggestion) return;
+
+    const localCount = suggestion.likesCount || 0;
+
     // 直接从suggestions表获取最新点赞数（触发器已更新）
     const { data } = await supabaseClient
         .from('suggestions')
@@ -2906,19 +3101,18 @@ async function handleLikeChange(payload) {
         .eq('id', suggestionId)
         .single();
 
-    const newCount = data?.likes_count || 0;
+    const dbCount = data?.likes_count || 0;
 
-    // 更新本地数据
-    const suggestion = allSuggestions.find(s => s.id === suggestionId);
-    if (suggestion) {
-        suggestion.likesCount = newCount;
+    // 只在数据库值与本地值确实不同时才更新UI，避免闪烁
+    if (dbCount !== localCount) {
+        suggestion.likesCount = dbCount;
 
         // 更新 UI
         const card = document.querySelector(`[data-suggestion-id="${suggestionId}"]`);
         if (card) {
             const countSpan = card.querySelector('.like-count');
             if (countSpan) {
-                countSpan.textContent = newCount;
+                countSpan.textContent = dbCount;
             }
         }
     }
@@ -2988,6 +3182,61 @@ document.head.appendChild(toastStyle);
 // ========== 聊天室功能 ==========
 
 let chatChannel = null;
+let isChatWindowOpen = false;
+let unreadChatCount = 0;
+
+// 聊天消息撤回时间限制
+const CHAT_WITHDRAW_TIME = 5 * 60 * 1000; // 5分钟（毫秒）
+
+// 切换聊天窗口显示/隐藏
+function toggleChatWindow() {
+    const chatWindow = document.getElementById('chatWindow');
+    const desktopBtn = document.getElementById('chatToggleBtn');
+    const mobileBtn = document.querySelector('.chat-header-btn');
+
+    if (!chatWindow) return;
+
+    isChatWindowOpen = !isChatWindowOpen;
+
+    if (isChatWindowOpen) {
+        chatWindow.classList.add('show');
+        if (desktopBtn) desktopBtn.classList.add('active');
+        if (mobileBtn) mobileBtn.classList.add('active');
+        // 清空未读消息数
+        unreadChatCount = 0;
+        updateChatBadge();
+        // 滚动到底部
+        scrollToChatBottom();
+        // 聚焦输入框
+        setTimeout(() => {
+            const input = document.getElementById('chatInput');
+            if (input) input.focus();
+        }, 300);
+    } else {
+        chatWindow.classList.remove('show');
+        if (desktopBtn) desktopBtn.classList.remove('active');
+        if (mobileBtn) mobileBtn.classList.remove('active');
+    }
+}
+
+// 更新聊天室消息徽章
+function updateChatBadge() {
+    const desktopBadge = document.getElementById('chatBadgeDesktop');
+    const mobileBadge = document.getElementById('chatBadge');
+
+    const show = unreadChatCount > 0 && !isChatWindowOpen;
+    const text = unreadChatCount > 99 ? '99+' : unreadChatCount;
+
+    [desktopBadge, mobileBadge].forEach(badge => {
+        if (!badge) return;
+        if (show) {
+            badge.textContent = text;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    });
+}
 
 // 加载聊天消息
 async function loadChatMessages() {
@@ -3010,14 +3259,16 @@ async function loadChatMessages() {
                     <p>暂无消息，来发起话题吧！</p>
                 </div>
             `;
-            return;
+        } else {
+            renderChatMessages(data);
         }
 
-        renderChatMessages(data);
         scrollToChatBottom();
 
-        // 订阅新消息
-        subscribeToChat();
+        // 确保实时订阅已启用（如果之前未成功）
+        if (!chatChannel) {
+            setupChatRealtimeSubscription();
+        }
 
     } catch (e) {
         container.innerHTML = '<div class="chat-loading">加载失败</div>';
@@ -3033,7 +3284,14 @@ function renderChatMessages(messages) {
         const isOwn = (currentUser && msg.user_id === currentUser.id) ||
                       msg.anonymous_user_id === anonymousUserId;
         const isAdmin = currentUser && currentUser.isAdmin;
-        const canDelete = isOwn || isAdmin;
+
+        // 判断是否可撤回（自己的消息且5分钟内）
+        const msgTime = new Date(msg.created_at).getTime();
+        const timePassed = Date.now() - msgTime;
+        const canWithdraw = isOwn && timePassed < CHAT_WITHDRAW_TIME;
+
+        // 管理员可以删除任何消息
+        const canAdminDelete = isAdmin;
 
         return `
             <div class="chat-message ${isOwn ? 'own-message' : ''} ${msg.user_id && isAdmin && !isOwn ? 'admin' : ''}" data-id="${msg.id}">
@@ -3042,14 +3300,24 @@ function renderChatMessages(messages) {
                     <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
                 </div>
                 <div class="chat-message-content">${escapeHtml(msg.content)}</div>
-                ${canDelete ? `
+                ${canWithdraw ? `
                     <div class="chat-message-actions">
-                        <button class="chat-message-delete" onclick="deleteChatMessage('${msg.id}')">删除</button>
+                        <button class="chat-message-withdraw" onclick="withdrawChatMessage('${msg.id}')">↩️ 撤回</button>
+                    </div>
+                ` : ''}
+                ${canAdminDelete && !canWithdraw ? `
+                    <div class="chat-message-actions">
+                        <button class="chat-message-delete" onclick="deleteChatMessage('${msg.id}')">🗑️ 删除</button>
                     </div>
                 ` : ''}
             </div>
         `;
     }).join('');
+
+    // 如果窗口已打开，滚动到底部
+    if (isChatWindowOpen) {
+        scrollToChatBottom();
+    }
 }
 
 // 格式化聊天时间
@@ -3081,8 +3349,9 @@ function scrollToChatBottom() {
 // 发送聊天消息
 async function sendChatMessage() {
     const input = document.getElementById('chatInput');
-    const content = input.value.trim();
+    if (!input) return;
 
+    const content = input.value.trim();
     if (!content) return;
 
     const isAnonymous = document.getElementById('chatAnonymous')?.checked || !currentUser;
@@ -3099,25 +3368,35 @@ async function sendChatMessage() {
             is_anonymous: isAnonymous || !currentUser
         };
 
-        const { error } = await supabaseClient
+        console.log('发送消息:', message);
+
+        const { data, error } = await supabaseClient
             .from('chat_messages')
-            .insert([message]);
+            .insert([message])
+            .select();
 
         if (error) throw error;
 
+        console.log('消息发送成功:', data);
+
         input.value = '';
-        // 消息会通过 realtime 更新，不需要手动添加
+
+        // 如果实时订阅未生效，手动添加消息到列表
+        if (data && data[0]) {
+            addChatMessage(data[0]);
+        }
 
     } catch (e) {
+        console.error('发送消息失败:', e);
         showMessageModal('错误', '发送失败，请重试', 'error');
     }
 
     if (btn) btn.disabled = false;
 }
 
-// 删除聊天消息
-async function deleteChatMessage(messageId) {
-    showConfirmModal('删除消息', '确定要删除这条消息吗？', async () => {
+// 撤回聊天消息（5分钟内）
+async function withdrawChatMessage(messageId) {
+    showConfirmModal('撤回消息', '确定要撤回这条消息吗？撤回后无法恢复。', async () => {
         try {
             const { error } = await supabaseClient
                 .from('chat_messages')
@@ -3128,17 +3407,52 @@ async function deleteChatMessage(messageId) {
 
             // 移除 DOM
             const msgEl = document.querySelector(`.chat-message[data-id="${messageId}"]`);
-            if (msgEl) msgEl.remove();
+            if (msgEl) {
+                msgEl.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => msgEl.remove(), 300);
+            }
 
+            showToast('消息已撤回', 'success');
         } catch (e) {
-            showMessageModal('错误', '删除失败', 'error');
+            console.error('撤回失败:', e);
+            showMessageModal('错误', '撤回失败，请重试', 'error');
         }
     });
 }
 
-// 订阅聊天消息
-function subscribeToChat() {
+// 删除聊天消息（管理员）
+async function deleteChatMessage(messageId) {
+    showConfirmModal('删除消息', '确定要删除这条消息吗？删除后无法恢复。', async () => {
+        try {
+            const { error } = await supabaseClient
+                .from('chat_messages')
+                .delete()
+                .eq('id', messageId);
+
+            if (error) throw error;
+
+            // 移除 DOM
+            const msgEl = document.querySelector(`.chat-message[data-id="${messageId}"]`);
+            if (msgEl) {
+                msgEl.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => msgEl.remove(), 300);
+            }
+
+            showToast('消息已删除', 'success');
+        } catch (e) {
+            console.error('删除失败:', e);
+            showMessageModal('错误', '删除失败，请重试', 'error');
+        }
+    });
+}
+
+// 设置聊天实时订阅
+function setupChatRealtimeSubscription() {
     if (!supabaseClient) return;
+
+    if (chatChannel) {
+        chatChannel.unsubscribe();
+    }
 
     chatChannel = supabaseClient
         .channel('chat-changes')
@@ -3154,20 +3468,65 @@ function subscribeToChat() {
                 addChatMessage(msg);
             }
         )
+        .on(
+            'postgres_changes',
+            {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'chat_messages'
+            },
+            (payload) => {
+                const msgId = payload.old.id;
+                removeChatMessage(msgId);
+            }
+        )
         .subscribe();
+}
+
+// 从列表移除消息（撤回/删除时实时同步）
+function removeChatMessage(msgId) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const msgEl = container.querySelector(`.chat-message[data-id="${msgId}"]`);
+    if (msgEl) {
+        msgEl.style.animation = 'fadeOut 0.3s ease forwards';
+        setTimeout(() => msgEl.remove(), 300);
+    }
 }
 
 // 添加新消息到列表
 function addChatMessage(msg) {
+    console.log('添加聊天消息:', msg);
+
     const container = document.getElementById('chatMessages');
-    if (!container) return;
+    if (!container) {
+        console.error('找不到聊天消息容器');
+        return;
+    }
+
+    // 检查消息是否已存在（避免重复）
+    const existingMsg = container.querySelector(`.chat-message[data-id="${msg.id}"]`);
+    if (existingMsg) {
+        console.log('消息已存在，跳过');
+        return;
+    }
 
     // 移除空状态提示
     const empty = container.querySelector('.chat-empty');
     if (empty) empty.remove();
 
+    // 移除加载提示
+    const loading = container.querySelector('.chat-loading');
+    if (loading) loading.remove();
+
     const isOwn = (currentUser && msg.user_id === currentUser.id) ||
                   msg.anonymous_user_id === anonymousUserId;
+    const isAdmin = currentUser && currentUser.isAdmin;
+
+    // 新消息可以撤回（自己的消息）
+    const canWithdraw = isOwn;
+    const canAdminDelete = isAdmin && !isOwn;
 
     const msgEl = document.createElement('div');
     msgEl.className = `chat-message ${isOwn ? 'own-message' : ''}`;
@@ -3178,9 +3537,26 @@ function addChatMessage(msg) {
             <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
         </div>
         <div class="chat-message-content">${escapeHtml(msg.content)}</div>
+        ${canWithdraw ? `
+            <div class="chat-message-actions">
+                <button class="chat-message-withdraw" onclick="withdrawChatMessage('${msg.id}')">↩️ 撤回</button>
+            </div>
+        ` : ''}
+        ${canAdminDelete ? `
+            <div class="chat-message-actions">
+                <button class="chat-message-delete" onclick="deleteChatMessage('${msg.id}')">🗑️ 删除</button>
+            </div>
+        ` : ''}
     `;
 
     container.appendChild(msgEl);
+
+    // 如果不是自己的消息且窗口未打开，增加未读计数
+    if (!isOwn && !isChatWindowOpen) {
+        unreadChatCount++;
+        updateChatBadge();
+    }
+
     scrollToChatBottom();
 }
 

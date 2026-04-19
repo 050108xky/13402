@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>我们的土木</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -19,7 +19,25 @@
                 <span class="title-text" id="rainbowTitle"></span>
                 <span class="title-icon">⚡</span>
             </h1>
-            <p class="subtitle">让每一份建议都被听见</p>
+            <div class="header-btns">
+                <div id="userPanel" class="user-panel" style="display: none;">
+                    <span id="userDisplay" class="user-display"></span>
+                    <span id="levelBadge" class="level-badge" style="display: none;"></span>
+                    <span id="adminBadge" class="admin-badge" style="display: none;">👑 管理员</span>
+                    <button id="adminLevelBtn" class="header-btn admin-level-btn" style="display: none;" onclick="showAdminLevelModal()">⚙️ 等级管理</button>
+                    <button class="header-btn logout-btn" onclick="logout()">退出</button>
+                </div>
+                <button id="loginBtn" class="header-btn login-header-btn" onclick="showLoginModal()">
+                    <span>👤</span> 登录
+                </button>
+                <button class="header-btn chat-header-btn mobile-only" onclick="toggleChatWindow()">
+                    <span>💬</span> 聊天室
+                    <span class="chat-toggle-badge" id="chatBadge" style="display: none;">0</span>
+                </button>
+                <button class="header-btn announce-header-btn" onclick="showAnnouncementModal()">
+                    <span>📢</span> 公告
+                </button>
+            </div>
         </header>
 
         <!-- 表单区域 -->
@@ -50,7 +68,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="suggestion">具体意见</label>
+                    <label for="suggestion">具体意见（必填）</label>
                     <div class="input-wrapper textarea-wrapper">
                         <div class="rainbow-display textarea-display" id="suggestionDisplay"></div>
                         <textarea
@@ -58,7 +76,6 @@
                             name="suggestion"
                             class="input-selector rainbow-input"
                             placeholder="请详细描述你的建议..."
-                            required
                         ></textarea>
                     </div>
                     <div class="char-count">
@@ -109,15 +126,6 @@
                     已收到的建议
                     <span id="suggestionCount" class="count-badge">0</span>
                 </h2>
-                <div class="header-actions">
-                    <div id="userPanel" class="user-panel" style="display: none;">
-                        <span id="userDisplay" class="user-display"></span>
-                        <button class="logout-btn" onclick="logout()">退出</button>
-                    </div>
-                    <button id="loginBtn" class="login-btn" onclick="showLoginModal()">
-                        <span>👤 登录</span>
-                    </button>
-                </div>
             </div>
             
             <!-- 数据统计面板 -->
@@ -134,13 +142,6 @@
                     <div class="stat-info">
                         <div class="stat-value" id="repliedCount">0</div>
                         <div class="stat-label">已回复</div>
-                    </div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon">⏳</div>
-                    <div class="stat-info">
-                        <div class="stat-value" id="pendingCount">0</div>
-                        <div class="stat-label">待处理</div>
                     </div>
                 </div>
                 <div class="stat-item">
@@ -182,29 +183,35 @@
             </div>
         </div>
 
-        <!-- 聊天室区域 -->
-        <div class="chat-container">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <span>💬</span>
-                    班级聊天室
-                </h2>
-            </div>
-            <div class="chat-messages" id="chatMessages">
-                <div class="chat-loading">加载中...</div>
-            </div>
-            <div class="chat-input-area">
-                <textarea id="chatInput" placeholder="说点什么..." rows="1"></textarea>
-                <div class="chat-options">
-                    <label class="checkbox-label small">
-                        <input type="checkbox" id="chatAnonymous">
-                        <span class="checkbox-custom"></span>
-                        <span class="checkbox-text">匿名</span>
-                    </label>
-                    <button class="chat-send-btn" onclick="sendChatMessage()">发送</button>
-                </div>
+    </div>
+
+    <!-- 聊天室浮动窗口 -->
+    <div id="chatWindow" class="chat-window">
+        <div class="chat-window-header">
+            <h3>💬 聊天室</h3>
+            <button class="chat-window-close" onclick="toggleChatWindow()">✕</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-loading">加载中...</div>
+        </div>
+        <div class="chat-input-area">
+            <textarea id="chatInput" placeholder="说点什么..." rows="1"></textarea>
+            <div class="chat-options">
+                <label class="checkbox-label small">
+                    <input type="checkbox" id="chatAnonymous">
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">匿名</span>
+                </label>
+                <button class="chat-send-btn" onclick="sendChatMessage()">发送</button>
             </div>
         </div>
+    </div>
+
+    <!-- 桌面端聊天室浮动按钮 -->
+    <div class="chat-toggle-btn desktop-only" id="chatToggleBtn" onclick="toggleChatWindow()">
+        <span class="chat-toggle-icon">💬</span>
+        <span class="chat-toggle-text">聊天室</span>
+        <span class="chat-toggle-badge" id="chatBadgeDesktop" style="display: none;">0</span>
     </div>
 
     <!-- 提交成功提示 -->
@@ -290,6 +297,9 @@
                     <input type="password" id="loginPassword" placeholder="请输入密码" required>
                 </div>
                 <button type="submit" class="auth-submit-btn">登录</button>
+                <div class="auth-links">
+                    <a href="#" onclick="showForgotPasswordModal()" class="forgot-password-link">忘记密码？</a>
+                </div>
             </form>
 
             <!-- 注册表单 -->
@@ -315,48 +325,116 @@
         </div>
     </div>
 
+    <!-- 忘记密码模态框 -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-content glass-effect auth-modal">
+            <button class="detail-close-btn" onclick="closeForgotPasswordModal()">✕</button>
+            <h3 class="auth-title">重置密码</h3>
+
+            <!-- 步骤1：输入用户名 -->
+            <div id="forgotStep1">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="forgotUsername" placeholder="请输入用户名" autocomplete="off">
+                </div>
+                <button class="auth-submit-btn" onclick="findUserForReset()">下一步</button>
+            </div>
+
+            <!-- 步骤2：设置新密码 -->
+            <div id="forgotStep2" style="display: none;">
+                <p class="reset-user-info">正在重置：<span id="resetTargetUser"></span></p>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="newPassword" placeholder="请输入新密码">
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="newPasswordConfirm" placeholder="请再次输入新密码">
+                </div>
+                <button class="auth-submit-btn" onclick="resetPassword()">确认重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 公告弹窗 -->
+    <div id="announcementModal" class="modal">
+        <div class="modal-content glass-effect announce-modal">
+            <button class="detail-close-btn" onclick="closeAnnouncementModal()">✕</button>
+            <h3 class="announce-title">📢 公告栏</h3>
+            <!-- 管理员发布公告 -->
+            <div id="announcePublishSection" class="announce-publish" style="display: none;">
+                <input type="text" id="announceTitleInput" class="announce-input" placeholder="公告标题">
+                <textarea id="announceContentInput" class="announce-textarea" placeholder="公告内容" rows="3"></textarea>
+                <button class="announce-publish-btn" onclick="publishAnnouncement()">发布公告</button>
+            </div>
+            <div id="announcementContent" class="announce-content">
+                <div class="announce-loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员等级管理模态框 -->
+    <div id="adminLevelModal" class="modal">
+        <div class="modal-content glass-effect admin-level-modal">
+            <button class="detail-close-btn" onclick="closeAdminLevelModal()">✕</button>
+            <h3 class="admin-level-title">⚙️ 等级管理</h3>
+
+            <!-- 搜索 -->
+            <div class="admin-level-search">
+                <input type="text" id="adminLevelSearchInput" placeholder="搜索用户名..." autocomplete="off">
+            </div>
+
+            <!-- 用户列表 -->
+            <div id="adminLevelList" class="admin-level-list">
+                <div class="admin-level-loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- 建议详情模态框 -->
     <div id="detailModal" class="modal">
-        <div class="modal-content glass-effect detail-modal">
-            <button class="detail-close-btn" onclick="closeDetailModal()">✕</button>
-            <div class="detail-header">
-                <span id="detailType" class="detail-type"></span>
-                <span id="detailPinned" class="pinned-badge" style="display: none;">📌 已置顶</span>
-            </div>
-            <div class="detail-meta">
-                <span id="detailAuthor" class="detail-author"></span>
-                <span id="detailTime" class="detail-time"></span>
-            </div>
-            <div class="detail-content">
-                <h4>建议内容</h4>
-                <div id="detailContent" class="detail-text"></div>
-            </div>
-            <div id="detailReplySection" class="detail-reply" style="display: none;">
-                <h4>管理员回复</h4>
-                <div id="detailReply" class="detail-text reply-text"></div>
-                <span id="detailReplyTime" class="detail-time"></span>
-            </div>
-            <div class="detail-footer">
-                <div class="detail-likes">
-                    <span id="detailLikes">0</span> 点赞
+        <div class="detail-modal-wrapper">
+            <button class="detail-close-btn-outside" onclick="closeDetailModal()" title="关闭">✕</button>
+            <div class="modal-content glass-effect detail-modal">
+                <div class="detail-header">
+                    <span id="detailType" class="detail-type"></span>
+                    <span id="detailPinned" class="pinned-badge" style="display: none;">📌 已置顶</span>
                 </div>
-            </div>
-            
-            <!-- 评论区 -->
-            <div class="comments-section">
-                <h4>💬 讨论 (<span id="commentCount">0</span>)</h4>
-                <div class="comment-input-area">
-                    <textarea id="commentInput" placeholder="发表你的看法..." rows="2"></textarea>
-                    <div class="comment-options">
-                        <label class="checkbox-label small">
-                            <input type="checkbox" id="commentAnonymous">
-                            <span class="checkbox-custom"></span>
-                            <span class="checkbox-text">匿名评论</span>
-                        </label>
-                        <button class="comment-submit-btn" onclick="submitComment()">发送</button>
+                <div class="detail-meta">
+                    <span id="detailAuthor" class="detail-author"></span>
+                    <span id="detailTime" class="detail-time"></span>
+                </div>
+                <div class="detail-content">
+                    <h4>建议内容</h4>
+                    <div id="detailContent" class="detail-text"></div>
+                </div>
+                <div id="detailReplySection" class="detail-reply" style="display: none;">
+                    <h4>管理员回复</h4>
+                    <div id="detailReply" class="detail-text reply-text"></div>
+                    <span id="detailReplyTime" class="detail-time"></span>
+                </div>
+                <div class="detail-footer">
+                    <div class="detail-likes">
+                        <span id="detailLikes">0</span> 点赞
                     </div>
                 </div>
-                <div id="commentsList" class="comments-list"></div>
+                
+                <!-- 评论区 -->
+                <div class="comments-section">
+                    <h4>💬 讨论 (<span id="commentCount">0</span>)</h4>
+                    <div class="comment-input-area">
+                        <textarea id="commentInput" placeholder="发表你的看法..." rows="2"></textarea>
+                        <div class="comment-options">
+                            <label class="checkbox-label small">
+                                <input type="checkbox" id="commentAnonymous">
+                                <span class="checkbox-custom"></span>
+                                <span class="checkbox-text">匿名评论</span>
+                            </label>
+                            <button class="comment-submit-btn" onclick="submitComment()">发送</button>
+                        </div>
+                    </div>
+                    <div id="commentsList" class="comments-list"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -367,7 +445,23 @@
     <!-- Supabase 配置文件 -->
     <script src="config.js"></script>
 
-    <!-- 主脚本 -->
-    <script src="script.js"></script>
+    <!-- 模块化 JS（按依赖顺序加载） -->
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/levels.js"></script>
+    <script src="js/admin-levels.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/announcements.js"></script>
+    <script src="js/ui-effects.js"></script>
+    <script src="js/form.js"></script>
+    <script src="js/suggestions.js"></script>
+    <script src="js/detail.js"></script>
+    <script src="js/likes.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/realtime.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

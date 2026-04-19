@@ -1,0 +1,8 @@
+# 部署到托管平台时忽略的文件
+# config.js（暂时上传用于部署，部署完成后应重新忽略）
+*.log
+.DS_Store
+Thumbs.db
+node_modules/
+.vscode/
+.idea/
