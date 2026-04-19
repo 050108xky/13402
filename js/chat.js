@@ -228,7 +228,7 @@ function scrollToChatBottom() {
     }
 }
 
-// 发送聊天消息（乐观更新：立即显示，不等待服务器）
+// 发送聊天消息
 async function sendChatMessage() {
     const input = document.getElementById('chatInput');
     if (!input) return;
@@ -240,29 +240,6 @@ async function sendChatMessage() {
 
     const btn = document.querySelector('.chat-send-btn');
     if (btn) btn.disabled = true;
-
-    // 立即清空输入框
-    input.value = '';
-
-    // 发送后保持键盘弹出
-    input.focus();
-
-    // 生成临时ID用于乐观渲染
-    const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-
-    // 构造乐观消息对象
-    const optimisticMsg = {
-        id: tempId,
-        content: content,
-        user_id: currentUser ? currentUser.id : null,
-        anonymous_user_id: anonymousUserId,
-        author_name: isAnonymous || !currentUser ? '匿名用户' : currentUser.displayName,
-        is_anonymous: isAnonymous || !currentUser,
-        created_at: new Date().toISOString()
-    };
-
-    // 立即渲染到界面
-    addChatMessage(optimisticMsg, true);
 
     try {
         const message = {
@@ -282,19 +259,17 @@ async function sendChatMessage() {
 
         console.log('发送结果:', { data, error });
 
-        if (error) throw error;
-
-        // 替换临时消息为真实消息（实时订阅可能已添加，需处理重复）
-        if (data && data[0]) {
-            const tempEl = document.querySelector(`.chat-message[data-id="${tempId}"]`);
-            if (tempEl) {
-                tempEl.dataset.id = data[0].id;
-                // 更新撤回/删除按钮中的ID
-                tempEl.querySelectorAll('[onclick]').forEach(el => {
-                    el.setAttribute('onclick', el.getAttribute('onclick').replace(tempId, data[0].id));
-                });
-            }
+        if (error) {
+            alert('发送失败: ' + (error.message || error));
+            throw error;
         }
+
+        // 清空输入框
+        input.value = '';
+
+        // 重新加载消息
+        chatMessagesCache = null;
+        loadChatMessages();
 
         // 聊天发言 +1 EXP
         if (currentUser) {
@@ -303,23 +278,10 @@ async function sendChatMessage() {
 
     } catch (e) {
         console.error('发送消息失败:', e);
-        // 发送失败，移除乐观消息
-        const tempEl = document.querySelector(`.chat-message[data-id="${tempId}"]`);
-        if (tempEl) {
-            tempEl.style.animation = 'fadeOut 0.3s ease forwards';
-            setTimeout(() => tempEl.remove(), 300);
-        }
-        // 恢复输入框内容
-        input.value = content;
-        // 显示详细错误信息
-        const errorMsg = e.message || e.error?.message || '发送失败，请重试';
-        alert('发送失败: ' + errorMsg);
-        showMessageModal('错误', '发送失败: ' + errorMsg, 'error');
+        alert('发送失败: ' + (e.message || e));
     }
 
     if (btn) btn.disabled = false;
-
-    // 保持键盘弹出
     input.focus();
 }
 
