@@ -2,6 +2,11 @@
 
 // 初始化 Supabase
 async function initializeSupabase() {
+    // CDN 加载失败时，尝试降级到本地文件
+    if (!window.supabase) {
+        await loadLocalSupabase();
+    }
+
     if (!window.supabase) {
         showMessageModal('加载失败', 'Supabase 库加载失败，请检查网络连接后刷新页面', 'error');
         return;
@@ -29,6 +34,17 @@ async function initializeSupabase() {
     } else {
         showMessageModal('配置错误', '配置缺失，请检查 config.js 文件', 'error');
     }
+}
+
+// 降级加载本地 Supabase 库
+function loadLocalSupabase() {
+    return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'supabase.min.js';
+        script.onload = resolve;
+        script.onerror = resolve;
+        document.head.appendChild(script);
+    });
 }
 
 // 初始化匿名用户ID
