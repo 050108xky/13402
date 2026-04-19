@@ -85,7 +85,9 @@ function handleChatChange(payload) {
     } else if (eventType === 'DELETE') {
         chatRealtimeAvailable = true;
         stopChatPolling();
-        removeChatMessage(oldRecord.id);
+        // 暂时禁用删除处理，避免消息消失
+        // removeChatMessage(oldRecord.id);
+        console.log('收到删除事件，但暂不处理:', oldRecord);
     } else if (eventType === 'UPDATE') {
         chatRealtimeAvailable = true;
         stopChatPolling();
@@ -134,16 +136,15 @@ async function pollChatMessages() {
                 addChatMessage(msg);
             });
 
-            // 移除已删除的消息（数据库里没有，但页面上还显示的）
-            container.querySelectorAll('.chat-message').forEach(el => {
-                const elId = el.dataset.id;
-                // 跳过乐观更新的临时消息
-                if (elId && elId.startsWith('temp_')) return;
-                if (elId && !dbIds.has(elId)) {
-                    el.style.animation = 'fadeOut 0.3s ease forwards';
-                    setTimeout(() => el.remove(), 300);
-                }
-            });
+            // 暂时禁用移除已删除消息的逻辑
+            // container.querySelectorAll('.chat-message').forEach(el => {
+            //     const elId = el.dataset.id;
+            //     if (elId && elId.startsWith('temp_')) return;
+            //     if (elId && !dbIds.has(elId)) {
+            //         el.style.animation = 'fadeOut 0.3s ease forwards';
+            //         setTimeout(() => el.remove(), 300);
+            //     }
+            // });
 
             // 异步批量获取等级数据
             const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
