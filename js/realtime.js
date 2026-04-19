@@ -85,7 +85,9 @@ function handleChatChange(payload) {
     } else if (eventType === 'DELETE') {
         chatRealtimeAvailable = true;
         stopChatPolling();
-        removeChatMessage(oldRecord.id);
+        // 暂时禁用删除处理，避免消息消失
+        // removeChatMessage(oldRecord.id);
+        console.log('收到删除事件，但暂不处理:', oldRecord);
     } else if (eventType === 'UPDATE') {
         chatRealtimeAvailable = true;
         stopChatPolling();

@@ -278,7 +278,7 @@ async function sendChatMessage() {
 
     } catch (e) {
         console.error('发送消息失败:', e);
-        alert('发送失败: ' + (e.message || e));
+        alert('发送失败: ' + JSON.stringify(e));
     }
 
     if (btn) btn.disabled = false;
