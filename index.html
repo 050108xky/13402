@@ -297,9 +297,6 @@
                     <input type="password" id="loginPassword" placeholder="请输入密码" required>
                 </div>
                 <button type="submit" class="auth-submit-btn">登录</button>
-                <div class="auth-links">
-                    <a href="#" onclick="showForgotPasswordModal()" class="forgot-password-link">忘记密码？</a>
-                </div>
             </form>
 
             <!-- 注册表单 -->
@@ -322,37 +319,6 @@
                 </div>
                 <button type="submit" class="auth-submit-btn">注册</button>
             </form>
-        </div>
-    </div>
-
-    <!-- 忘记密码模态框 -->
-    <div id="forgotPasswordModal" class="modal">
-        <div class="modal-content glass-effect auth-modal">
-            <button class="detail-close-btn" onclick="closeForgotPasswordModal()">✕</button>
-            <h3 class="auth-title">重置密码</h3>
-
-            <!-- 步骤1：输入用户名 -->
-            <div id="forgotStep1">
-                <div class="form-group">
-                    <label>用户名</label>
-                    <input type="text" id="forgotUsername" placeholder="请输入用户名" autocomplete="off">
-                </div>
-                <button class="auth-submit-btn" onclick="findUserForReset()">下一步</button>
-            </div>
-
-            <!-- 步骤2：设置新密码 -->
-            <div id="forgotStep2" style="display: none;">
-                <p class="reset-user-info">正在重置：<span id="resetTargetUser"></span></p>
-                <div class="form-group">
-                    <label>新密码</label>
-                    <input type="password" id="newPassword" placeholder="请输入新密码">
-                </div>
-                <div class="form-group">
-                    <label>确认新密码</label>
-                    <input type="password" id="newPasswordConfirm" placeholder="请再次输入新密码">
-                </div>
-                <button class="auth-submit-btn" onclick="resetPassword()">确认重置</button>
-            </div>
         </div>
     </div>
 
