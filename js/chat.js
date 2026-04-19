@@ -333,7 +333,6 @@ async function withdrawChatMessage(messageId) {
                 setTimeout(() => msgEl.remove(), 300);
             }
 
-            showToast('消息已撤回', 'success');
         } catch (e) {
             console.error('撤回失败:', e);
             showMessageModal('错误', '撤回失败，请重试', 'error');
@@ -358,7 +357,6 @@ async function deleteChatMessage(messageId) {
                 setTimeout(() => msgEl.remove(), 300);
             }
 
-            showToast('消息已删除', 'success');
         } catch (e) {
             console.error('删除失败:', e);
             showMessageModal('错误', '删除失败，请重试', 'error');
