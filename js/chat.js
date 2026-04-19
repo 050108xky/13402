@@ -92,13 +92,20 @@ async function loadChatMessages() {
     chatLoading = true;
 
     try {
+        console.log('开始加载聊天消息...');
+        
         const { data, error } = await supabaseClient
             .from('chat_messages')
             .select('id, content, user_id, anonymous_user_id, author_name, is_anonymous, created_at')
             .order('created_at', { ascending: true })
             .limit(30);
 
-        if (error) throw error;
+        console.log('加载结果:', { data, error, count: data?.length });
+
+        if (error) {
+            console.error('加载错误:', error);
+            throw error;
+        }
 
         // 存入缓存
         chatMessagesCache = data || [];
