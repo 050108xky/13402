@@ -5199,3 +5199,305 @@ textarea.input-selector {
         max-width: 100%;
     }
 }
+
+/* ========== 管理员等级管理 ========== */
+
+.admin-level-btn {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(123, 44, 191, 0.2));
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: #00d4ff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.admin-level-btn:hover {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.35), rgba(123, 44, 191, 0.35));
+    border-color: rgba(0, 212, 255, 0.5);
+}
+
+.admin-level-modal {
+    position: relative;
+    max-width: 520px;
+    width: 92%;
+    max-height: 80vh;
+    padding: 30px;
+    text-align: left;
+    overscroll-behavior: contain;
+}
+
+.admin-level-modal .detail-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-level-modal .detail-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.admin-level-title {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.admin-level-search {
+    margin-bottom: 16px;
+}
+
+.admin-level-search input {
+    width: 100%;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+    font-family: 'Noto Sans SC', sans-serif;
+}
+
+.admin-level-search input:focus {
+    border-color: var(--primary-color);
+}
+
+.admin-level-search input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.admin-level-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.admin-level-loading {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 30px 0;
+    font-size: 0.9rem;
+}
+
+.admin-level-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background 0.2s;
+}
+
+.admin-level-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.admin-level-user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-level-username {
+    font-weight: 500;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+.admin-level-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+.admin-level-tag.rainbow {
+    background: linear-gradient(90deg, #00d4ff, #00ff88, #7b2cbf, #00d4ff);
+    background-size: 300% 100%;
+    animation: levelRainbow 3s linear infinite;
+    color: white;
+    border: none;
+}
+
+.admin-level-tag.admin-tag-inline {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    color: #ffc107;
+}
+
+.admin-level-exp {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.admin-level-edit-btn {
+    padding: 5px 12px;
+    background: rgba(0, 212, 255, 0.15);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 8px;
+    color: #00d4ff;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    margin-left: 8px;
+}
+
+.admin-level-edit-btn:hover {
+    background: rgba(0, 212, 255, 0.3);
+    border-color: rgba(0, 212, 255, 0.5);
+}
+
+/* 编辑等级模态框内容 */
+.admin-edit-level-content {
+    text-align: left;
+    width: 100%;
+}
+
+.admin-current-level {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 14px;
+}
+
+.admin-edit-input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.admin-edit-input-group label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+}
+
+.admin-edit-input-group input {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    min-width: 0;
+    font-family: 'Noto Sans SC', sans-serif;
+}
+
+.admin-edit-input-group input:focus {
+    border-color: var(--primary-color);
+}
+
+.admin-edit-preview {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 14px;
+    padding: 6px 0;
+}
+
+.admin-preset-group {
+    margin-top: 10px;
+}
+
+.admin-preset-group > label {
+    display: block;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 8px;
+}
+
+.admin-preset-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.admin-preset-btn {
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.admin-preset-btn:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.3);
+    color: #00d4ff;
+}
+
+.admin-preset-btn.selected {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: rgba(0, 212, 255, 0.5);
+    color: #00d4ff;
+}
+
+/* 移动端适配 */
+@media (max-width: 480px) {
+    .admin-level-modal {
+        padding: 20px;
+        max-height: 85vh;
+    }
+
+    .admin-level-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .admin-level-edit-btn {
+        align-self: flex-end;
+        margin-left: 0;
+    }
+
+    .admin-level-username {
+        max-width: 180px;
+    }
+
+    .admin-preset-btns {
+        gap: 4px;
+    }
+}

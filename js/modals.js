@@ -65,6 +65,7 @@ document.addEventListener('click', (e) => {
     const messageModal = document.getElementById('messageModal');
     const detailModal = document.getElementById('detailModal');
     const announcementModal = document.getElementById('announcementModal');
+    const adminLevelModal = document.getElementById('adminLevelModal');
 
     if (e.target === successModal) {
         closeModal();
@@ -78,6 +79,8 @@ document.addEventListener('click', (e) => {
         closeDetailModal();
     } else if (e.target === announcementModal) {
         closeAnnouncementModal();
+    } else if (e.target === adminLevelModal) {
+        closeAdminLevelModal();
     }
 });
 
@@ -91,6 +94,7 @@ document.addEventListener('keydown', (e) => {
         closeDetailModal();
         closeAnnouncementModal();
         closeAuthModal();
+        closeAdminLevelModal();
     }
 });
 
@@ -122,6 +126,9 @@ window.addEventListener('popstate', (e) => {
                 break;
             case 'announcementModal':
                 closeAnnouncementModal();
+                break;
+            case 'adminLevelModal':
+                closeAdminLevelModal();
                 break;
         }
         // 如果还有更多弹窗，再次添加历史记录以保持返回键行为

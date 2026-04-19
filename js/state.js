@@ -117,3 +117,12 @@ let currentUserExp = null;
 
 // 管理员用户ID集合（用于聊天室等场景判断管理员身份）
 let adminUserIds = new Set();
+
+// ========== 聊天轮询状态 ==========
+
+// 聊天轮询定时器
+let chatPollingTimer = null;
+// 聊天实时是否可用
+let chatRealtimeAvailable = false;
+// 上次已知的最新消息时间戳（用于轮询增量获取）
+let lastChatMessageTime = null;

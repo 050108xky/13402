@@ -1,5 +1,10 @@
 // ========== 聊天室 ==========
 
+// 聊天消息内存缓存（后台预加载后存这里，打开聊天室时直接渲染）
+let chatMessagesCache = null;
+// 是否正在加载中（防止重复请求）
+let chatLoading = false;
+
 // 切换聊天窗口显示/隐藏
 function toggleChatWindow() {
     const chatWindow = document.getElementById('chatWindow');
@@ -17,8 +22,28 @@ function toggleChatWindow() {
         // 清空未读消息数
         unreadChatCount = 0;
         updateChatBadge();
-        // 滚动到底部
-        scrollToChatBottom();
+
+        // 有缓存直接渲染，正在加载中就等它完成，否则发起新请求
+        if (chatMessagesCache) {
+            const container = document.getElementById('chatMessages');
+            if (container) {
+                if (chatMessagesCache.length === 0) {
+                    container.innerHTML = `
+                        <div class="chat-empty">
+                            <div class="chat-empty-icon">💬</div>
+                            <p>暂无消息，来发起话题吧！</p>
+                        </div>
+                    `;
+                } else {
+                    renderChatMessages(chatMessagesCache);
+                }
+                scrollToChatBottom();
+            }
+        } else if (!chatLoading) {
+            loadChatMessages();
+        }
+        // chatLoading=true 的情况：后台请求正在飞，loadChatMessages完成后会自动渲染
+
         // 聚焦输入框
         setTimeout(() => {
             const input = document.getElementById('chatInput');
@@ -28,6 +53,16 @@ function toggleChatWindow() {
         chatWindow.classList.remove('show');
         if (desktopBtn) desktopBtn.classList.remove('active');
         if (mobileBtn) mobileBtn.classList.remove('active');
+
+        // 移动端关闭聊天室后，轻量级触发重绘修复按钮消失问题
+        if (mobileBtn) {
+            mobileBtn.style.webkitTransform = 'translateZ(0)';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    mobileBtn.style.webkitTransform = '';
+                });
+            });
+        }
     }
 }
 
@@ -50,44 +85,89 @@ function updateChatBadge() {
     });
 }
 
-// 加载聊天消息
+// 加载聊天消息（后台预加载 + 打开时渲染）
 async function loadChatMessages() {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
+    // 防止重复请求
+    if (chatLoading) return;
+    chatLoading = true;
 
     try {
         const { data, error } = await supabaseClient
             .from('chat_messages')
-            .select('*')
+            .select('id, content, user_id, anonymous_user_id, author_name, is_anonymous, created_at')
             .order('created_at', { ascending: true })
-            .limit(100);
+            .limit(30);
 
         if (error) throw error;
 
-        if (!data || data.length === 0) {
-            container.innerHTML = `
-                <div class="chat-empty">
-                    <div class="chat-empty-icon">💬</div>
-                    <p>暂无消息，来发起话题吧！</p>
-                </div>
-            `;
-        } else {
-            // 批量获取消息作者的经验数据
-            const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
-            await fetchUserExpBatch(userIds);
-            renderChatMessages(data);
+        // 存入缓存
+        chatMessagesCache = data || [];
+
+        if (data && data.length > 0) {
+            lastChatMessageTime = data[data.length - 1].created_at;
         }
 
-        scrollToChatBottom();
+        // 如果聊天窗口已打开，立即渲染
+        if (isChatWindowOpen) {
+            const container = document.getElementById('chatMessages');
+            if (!container) return;
 
-        // 确保实时订阅已启用
-        if (!chatChannel) {
-            setupChatRealtimeSubscription();
+            if (!data || data.length === 0) {
+                container.innerHTML = `
+                    <div class="chat-empty">
+                        <div class="chat-empty-icon">💬</div>
+                        <p>暂无消息，来发起话题吧！</p>
+                    </div>
+                `;
+            } else {
+                renderChatMessages(data);
+                // 异步加载等级
+                const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
+                fetchUserExpBatch(userIds).then(() => {
+                    updateChatLevelTags();
+                });
+            }
+            scrollToChatBottom();
         }
 
     } catch (e) {
-        container.innerHTML = '<div class="chat-loading">加载失败</div>';
+        if (isChatWindowOpen) {
+            const container = document.getElementById('chatMessages');
+            if (container) container.innerHTML = '<div class="chat-loading">加载失败</div>';
+        }
+    } finally {
+        chatLoading = false;
     }
+}
+
+// 等级数据加载完后，更新聊天消息中的等级标签（局部更新，不重渲染整个列表）
+function updateChatLevelTags() {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    container.querySelectorAll('.chat-message').forEach(msgEl => {
+        const userId = msgEl.dataset.userId;
+        if (!userId) return;
+
+        const levelTagEl = msgEl.querySelector('.chat-level-tag');
+        if (!levelTagEl) return;
+
+        // 管理员不更新等级标签
+        if (adminUserIds.has(userId)) return;
+
+        const levelInfo = getUserLevelInfo(userId);
+        if (!levelInfo) return;
+
+        const { level, title, color } = levelInfo;
+        levelTagEl.textContent = `LV${level} ${title}`;
+        if (color === 'rainbow') {
+            levelTagEl.className = 'chat-level-tag rainbow';
+            levelTagEl.style.cssText = '';
+        } else {
+            levelTagEl.className = 'chat-level-tag';
+            levelTagEl.style.cssText = `background:${color}20;border:1px solid ${color}60;color:${color};`;
+        }
+    });
 }
 
 // 渲染聊天消息
@@ -110,11 +190,14 @@ function renderChatMessages(messages) {
         const isAdminUser = msg.user_id && adminUserIds.has(msg.user_id);
         const levelInfo = (!isAdminUser && msg.user_id) ? getUserLevelInfo(msg.user_id) : null;
 
+        // 等级标签：有缓存直接显示，没有则留空（异步加载后会通过 updateChatLevelTags 补充）
+        const levelTagHTML = isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : (msg.user_id ? '<span class="chat-level-tag"></span>' : ''));
+
         return `
-            <div class="chat-message ${isOwn ? 'own-message' : ''} ${isAdminUser && !isOwn ? 'admin' : ''}" data-id="${msg.id}">
+            <div class="chat-message ${isOwn ? 'own-message' : ''} ${isAdminUser && !isOwn ? 'admin' : ''}" data-id="${msg.id}" data-user-id="${msg.user_id || ''}">
                 <div class="chat-message-header">
                     <span class="chat-message-author">${msg.is_anonymous ? '👤 匿名用户' : escapeHtml(msg.author_name)}</span>
-                    ${isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : '')}
+                    ${levelTagHTML}
                     <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
                 </div>
                 <div class="chat-message-content">${escapeHtml(msg.content)}</div>
@@ -145,7 +228,7 @@ function scrollToChatBottom() {
     }
 }
 
-// 发送聊天消息
+// 发送聊天消息（乐观更新：立即显示，不等待服务器）
 async function sendChatMessage() {
     const input = document.getElementById('chatInput');
     if (!input) return;
@@ -157,6 +240,29 @@ async function sendChatMessage() {
 
     const btn = document.querySelector('.chat-send-btn');
     if (btn) btn.disabled = true;
+
+    // 立即清空输入框
+    input.value = '';
+
+    // 发送后保持键盘弹出
+    input.focus();
+
+    // 生成临时ID用于乐观渲染
+    const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+
+    // 构造乐观消息对象
+    const optimisticMsg = {
+        id: tempId,
+        content: content,
+        user_id: currentUser ? currentUser.id : null,
+        anonymous_user_id: anonymousUserId,
+        author_name: isAnonymous || !currentUser ? '匿名用户' : currentUser.displayName,
+        is_anonymous: isAnonymous || !currentUser,
+        created_at: new Date().toISOString()
+    };
+
+    // 立即渲染到界面
+    addChatMessage(optimisticMsg, true);
 
     try {
         const message = {
@@ -174,11 +280,16 @@ async function sendChatMessage() {
 
         if (error) throw error;
 
-        input.value = '';
-
-        // 如果实时订阅未生效，手动添加消息到列表
+        // 替换临时消息为真实消息（实时订阅可能已添加，需处理重复）
         if (data && data[0]) {
-            addChatMessage(data[0]);
+            const tempEl = document.querySelector(`.chat-message[data-id="${tempId}"]`);
+            if (tempEl) {
+                tempEl.dataset.id = data[0].id;
+                // 更新撤回/删除按钮中的ID
+                tempEl.querySelectorAll('[onclick]').forEach(el => {
+                    el.setAttribute('onclick', el.getAttribute('onclick').replace(tempId, data[0].id));
+                });
+            }
         }
 
         // 聊天发言 +1 EXP
@@ -188,10 +299,21 @@ async function sendChatMessage() {
 
     } catch (e) {
         console.error('发送消息失败:', e);
+        // 发送失败，移除乐观消息
+        const tempEl = document.querySelector(`.chat-message[data-id="${tempId}"]`);
+        if (tempEl) {
+            tempEl.style.animation = 'fadeOut 0.3s ease forwards';
+            setTimeout(() => tempEl.remove(), 300);
+        }
+        // 恢复输入框内容
+        input.value = content;
         showMessageModal('错误', '发送失败，请重试', 'error');
     }
 
     if (btn) btn.disabled = false;
+
+    // 保持键盘弹出
+    input.focus();
 }
 
 // 撤回聊天消息（5分钟内）
@@ -244,43 +366,6 @@ async function deleteChatMessage(messageId) {
     });
 }
 
-// 设置聊天实时订阅
-function setupChatRealtimeSubscription() {
-    if (!supabaseClient) return;
-
-    if (chatChannel) {
-        chatChannel.unsubscribe();
-    }
-
-    chatChannel = supabaseClient
-        .channel('chat-changes')
-        .on(
-            'postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'chat_messages'
-            },
-            (payload) => {
-                const msg = payload.new;
-                addChatMessage(msg);
-            }
-        )
-        .on(
-            'postgres_changes',
-            {
-                event: 'DELETE',
-                schema: 'public',
-                table: 'chat_messages'
-            },
-            (payload) => {
-                const msgId = payload.old.id;
-                removeChatMessage(msgId);
-            }
-        )
-        .subscribe();
-}
-
 // 从列表移除消息（撤回/删除时实时同步）
 function removeChatMessage(msgId) {
     const container = document.getElementById('chatMessages');
@@ -294,13 +379,33 @@ function removeChatMessage(msgId) {
 }
 
 // 添加新消息到列表
-function addChatMessage(msg) {
+// isOptimistic: 是否为乐观更新的临时消息
+function addChatMessage(msg, isOptimistic = false) {
     const container = document.getElementById('chatMessages');
     if (!container) return;
 
     // 检查消息是否已存在（避免重复）
     const existingMsg = container.querySelector(`.chat-message[data-id="${msg.id}"]`);
     if (existingMsg) return;
+
+    // 如果这是实时订阅推来的真实消息，检查是否有同内容的乐观临时消息可以替换
+    if (!isOptimistic && msg.user_id) {
+        const optimisticMsgs = container.querySelectorAll('.chat-message.own-message');
+        for (const el of optimisticMsgs) {
+            const tempId = el.dataset.id;
+            if (tempId && tempId.startsWith('temp_')) {
+                // 匹配同用户、同内容的乐观消息，替换为真实消息
+                const contentEl = el.querySelector('.chat-message-content');
+                if (contentEl && contentEl.textContent === msg.content) {
+                    el.dataset.id = msg.id;
+                    el.querySelectorAll('[onclick]').forEach(btn => {
+                        btn.setAttribute('onclick', btn.getAttribute('onclick').replace(tempId, msg.id));
+                    });
+                    return; // 已替换，不需要再添加
+                }
+            }
+        }
+    }
 
     // 移除空状态提示
     const empty = container.querySelector('.chat-empty');
@@ -318,6 +423,9 @@ function addChatMessage(msg) {
     const isAdminUser = msg.user_id && adminUserIds.has(msg.user_id);
     const levelInfo = (!isAdminUser && msg.user_id) ? getUserLevelInfo(msg.user_id) : null;
 
+    // 等级标签：有缓存直接显示，没有则留空占位
+    const levelTagHTML = isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : (msg.user_id ? '<span class="chat-level-tag"></span>' : ''));
+
     // 新消息可以撤回（自己的消息）
     const canWithdraw = isOwn;
     const canAdminDelete = isAdmin && !isOwn;
@@ -325,10 +433,11 @@ function addChatMessage(msg) {
     const msgEl = document.createElement('div');
     msgEl.className = `chat-message ${isOwn ? 'own-message' : ''} ${isAdminUser && !isOwn ? 'admin' : ''}`;
     msgEl.dataset.id = msg.id;
+    msgEl.dataset.userId = msg.user_id || '';
     msgEl.innerHTML = `
         <div class="chat-message-header">
             <span class="chat-message-author">${msg.is_anonymous ? '👤 匿名用户' : escapeHtml(msg.author_name)}</span>
-            ${isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : '')}
+            ${levelTagHTML}
             <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
         </div>
         <div class="chat-message-content">${escapeHtml(msg.content)}</div>

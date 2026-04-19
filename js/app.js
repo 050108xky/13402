@@ -54,16 +54,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 设置浏览器通知
     setupNotifications();
 
-    // 启用建议实时订阅
+    // 启用实时订阅（建议 + 点赞 + 聊天）
     setupRealtimeSubscriptions();
-
-    // 启用聊天实时订阅
-    setupChatRealtimeSubscription();
 
     // 启用下拉刷新
     setupPullToRefresh();
 
-    // 加载聊天消息
+    // 后台预加载聊天消息（不阻塞页面，打开聊天室时直接渲染）
     loadChatMessages();
 
     // 设置聊天输入

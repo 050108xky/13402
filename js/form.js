@@ -302,6 +302,12 @@ async function handleSubmit(e) {
         return;
     }
 
+    if (!suggestion) {
+        showMessageModal('输入错误', '请输入具体意见', 'warning');
+        suggestionInput.focus();
+        return;
+    }
+
     if ((isAnonymous || isAdminOnly) && !name) {
         name = '匿名用户';
     }

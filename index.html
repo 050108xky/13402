@@ -24,6 +24,7 @@
                     <span id="userDisplay" class="user-display"></span>
                     <span id="levelBadge" class="level-badge" style="display: none;"></span>
                     <span id="adminBadge" class="admin-badge" style="display: none;">👑 管理员</span>
+                    <button id="adminLevelBtn" class="header-btn admin-level-btn" style="display: none;" onclick="showAdminLevelModal()">⚙️ 等级管理</button>
                     <button class="header-btn logout-btn" onclick="logout()">退出</button>
                 </div>
                 <button id="loginBtn" class="header-btn login-header-btn" onclick="showLoginModal()">
@@ -67,7 +68,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="suggestion">具体意见（可选）</label>
+                    <label for="suggestion">具体意见（必填）</label>
                     <div class="input-wrapper textarea-wrapper">
                         <div class="rainbow-display textarea-display" id="suggestionDisplay"></div>
                         <textarea
@@ -338,6 +339,24 @@
         </div>
     </div>
 
+    <!-- 管理员等级管理模态框 -->
+    <div id="adminLevelModal" class="modal">
+        <div class="modal-content glass-effect admin-level-modal">
+            <button class="detail-close-btn" onclick="closeAdminLevelModal()">✕</button>
+            <h3 class="admin-level-title">⚙️ 等级管理</h3>
+
+            <!-- 搜索 -->
+            <div class="admin-level-search">
+                <input type="text" id="adminLevelSearchInput" placeholder="搜索用户名..." autocomplete="off">
+            </div>
+
+            <!-- 用户列表 -->
+            <div id="adminLevelList" class="admin-level-list">
+                <div class="admin-level-loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- 建议详情模态框 -->
     <div id="detailModal" class="modal">
         <div class="detail-modal-wrapper">
@@ -397,6 +416,7 @@
     <script src="js/utils.js"></script>
     <script src="js/supabase-init.js"></script>
     <script src="js/levels.js"></script>
+    <script src="js/admin-levels.js"></script>
     <script src="js/modals.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/announcements.js"></script>

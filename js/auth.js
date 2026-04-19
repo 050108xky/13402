@@ -223,10 +223,17 @@ function updateUserUI() {
         userDisplay.textContent = currentUser.displayName;
         userPanel.classList.toggle('admin', currentUser.isAdmin);
         if (adminBadge) adminBadge.style.display = currentUser.isAdmin ? 'inline-block' : 'none';
+
+        // 管理员显示等级管理按钮
+        const adminLevelBtn = document.getElementById('adminLevelBtn');
+        if (adminLevelBtn) adminLevelBtn.style.display = currentUser.isAdmin ? 'inline-block' : 'none';
     } else {
         loginBtn.style.display = 'inline-flex';
         userPanel.style.display = 'none';
         if (adminBadge) adminBadge.style.display = 'none';
+
+        const adminLevelBtn = document.getElementById('adminLevelBtn');
+        if (adminLevelBtn) adminLevelBtn.style.display = 'none';
     }
 
     // 显示/隐藏批量操作工具栏（仅管理员）

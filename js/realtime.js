@@ -1,4 +1,4 @@
-// ========== 实时订阅（建议 + 点赞） ==========
+// ========== 实时订阅（建议 + 点赞 + 聊天） ==========
 
 // 设置实时订阅
 function setupRealtimeSubscriptions() {
@@ -31,6 +31,131 @@ function setupRealtimeSubscriptions() {
             handleLikeChange
         )
         .subscribe();
+
+    // 设置聊天实时订阅
+    setupChatRealtimeSubscription();
+}
+
+// 设置聊天实时订阅（实时 + 轮询并行保底）
+function setupChatRealtimeSubscription() {
+    if (!supabaseClient) return;
+
+    if (chatChannel) {
+        chatChannel.unsubscribe();
+    }
+
+    // 和建议订阅保持一致的模式：event: '*', 命名回调函数
+    chatChannel = supabaseClient
+        .channel('chat-changes')
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'chat_messages'
+            },
+            handleChatChange
+        )
+        .subscribe();
+
+    // 同时启动轮询保底
+    startChatPolling();
+}
+
+// 处理聊天消息变更
+function handleChatChange(payload) {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+
+    if (eventType === 'INSERT') {
+        // 确认实时可用，停止轮询
+        chatRealtimeAvailable = true;
+        stopChatPolling();
+
+        const msg = newRecord;
+        addChatMessage(msg);
+        if (msg.created_at) {
+            lastChatMessageTime = msg.created_at;
+        }
+        // 异步获取等级数据
+        if (msg.user_id && !userExpCache[msg.user_id]) {
+            fetchUserExpBatch([msg.user_id]).then(() => {
+                updateChatLevelTags();
+            });
+        }
+    } else if (eventType === 'DELETE') {
+        chatRealtimeAvailable = true;
+        stopChatPolling();
+        removeChatMessage(oldRecord.id);
+    } else if (eventType === 'UPDATE') {
+        chatRealtimeAvailable = true;
+        stopChatPolling();
+        // 更新消息：重新加载聊天列表
+        loadChatMessages();
+    }
+}
+
+// 启动聊天轮询保底
+function startChatPolling() {
+    if (chatPollingTimer) return;
+    chatPollingTimer = setInterval(pollChatMessages, 2000);
+}
+
+// 停止聊天轮询
+function stopChatPolling() {
+    if (chatPollingTimer) {
+        clearInterval(chatPollingTimer);
+        chatPollingTimer = null;
+    }
+}
+
+// 轮询获取新聊天消息（同时检测已删除的消息）
+async function pollChatMessages() {
+    if (!supabaseClient) return;
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    try {
+        // 拉取最新消息，用于检测新增和删除
+        const { data, error } = await supabaseClient
+            .from('chat_messages')
+            .select('id, content, user_id, anonymous_user_id, author_name, is_anonymous, created_at')
+            .order('created_at', { ascending: true })
+            .limit(30);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            // 更新最新时间戳
+            lastChatMessageTime = data[data.length - 1].created_at;
+
+            // 添加新消息
+            const dbIds = new Set(data.map(m => m.id));
+            data.forEach(msg => {
+                addChatMessage(msg);
+            });
+
+            // 移除已删除的消息（数据库里没有，但页面上还显示的）
+            container.querySelectorAll('.chat-message').forEach(el => {
+                const elId = el.dataset.id;
+                // 跳过乐观更新的临时消息
+                if (elId && elId.startsWith('temp_')) return;
+                if (elId && !dbIds.has(elId)) {
+                    el.style.animation = 'fadeOut 0.3s ease forwards';
+                    setTimeout(() => el.remove(), 300);
+                }
+            });
+
+            // 异步批量获取等级数据
+            const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
+            if (userIds.length > 0) {
+                fetchUserExpBatch(userIds).then(() => {
+                    updateChatLevelTags();
+                });
+            }
+        }
+    } catch (e) {
+        console.error('轮询聊天消息失败:', e);
+    }
 }
 
 // 处理建议变更

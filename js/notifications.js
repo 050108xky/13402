@@ -138,60 +138,70 @@ function setupPullToRefresh() {
     pullIndicator.innerHTML = '<span class="pull-icon">↓</span><span class="pull-text">下拉刷新</span>';
     document.body.prepend(pullIndicator);
 
+    let pullTriggered = false;
+
     // 触摸事件
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-}
+    document.addEventListener('touchstart', (e) => {
+        if (window.scrollY <= 0) {
+            touchStartY = e.touches[0].clientY;
+            isPulling = true;
+            pullTriggered = false;
+        }
+    }, { passive: true });
 
-function handleTouchStart(e) {
-    if (window.scrollY <= 0) {
-        touchStartY = e.touches[0].clientY;
-        isPulling = true;
-    }
-}
+    document.addEventListener('touchmove', (e) => {
+        if (!isPulling) return;
 
-function handleTouchMove(e) {
-    if (!isPulling) return;
+        const touchY = e.touches[0].clientY;
+        const diff = touchY - touchStartY;
 
-    const touchY = e.touches[0].clientY;
-    const diff = touchY - touchStartY;
+        if (diff > 0 && window.scrollY <= 0) {
+            pullIndicator.style.transform = 'translateX(-50%) translateY(0)';
+            pullIndicator.style.opacity = Math.min(diff / 40, 1);
 
-    if (diff > 0 && window.scrollY <= 0) {
-        pullIndicator.style.transform = 'translateX(-50%) translateY(0)';
-        pullIndicator.style.opacity = Math.min(diff / 40, 1);
+            if (diff > 60) {
+                pullTriggered = true;
+                pullIndicator.innerHTML = '<span class="pull-icon">🔄</span><span class="pull-text">松开刷新</span>';
+            } else {
+                pullTriggered = false;
+                pullIndicator.innerHTML = '<span class="pull-icon">↓</span><span class="pull-text">下拉刷新</span>';
+            }
 
-        if (diff > 60) {
-            pullIndicator.innerHTML = '<span class="pull-icon">🔄</span><span class="pull-text">松开刷新</span>';
+            if (diff > 10) {
+                e.preventDefault();
+            }
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchend', (e) => {
+        if (!isPulling) return;
+
+        // 使用 pullTriggered 标记代替重新计算 diff，避免 scrollY 变化导致条件失败
+        if (pullTriggered) {
+            pullIndicator.innerHTML = '<span class="pull-icon">⏳</span><span class="pull-text">刷新中...</span>';
+            doRefresh();
         } else {
-            pullIndicator.innerHTML = '<span class="pull-icon">↓</span><span class="pull-text">下拉刷新</span>';
+            resetPullIndicator();
         }
 
-        if (diff > 10) {
-            e.preventDefault();
-        }
-    }
-}
-
-function handleTouchEnd(e) {
-    if (!isPulling) return;
-
-    const touchY = e.changedTouches[0].clientY;
-    const diff = touchY - touchStartY;
-
-    if (diff > 60 && window.scrollY <= 0) {
-        pullIndicator.innerHTML = '<span class="pull-icon">⏳</span><span class="pull-text">刷新中...</span>';
-        doRefresh();
-    } else {
-        resetPullIndicator();
-    }
-
-    isPulling = false;
+        isPulling = false;
+        pullTriggered = false;
+    }, { passive: true });
 }
 
 async function doRefresh() {
     try {
-        await loadSuggestions();
+        // 重置到第1页并刷新建议列表
+        await loadSuggestions(true);
+
+        // 刷新聊天消息
+        loadChatMessages();
+
+        // 刷新当前用户经验
+        if (currentUser) {
+            loadCurrentUserExp();
+        }
+
         pullIndicator.innerHTML = '<span class="pull-icon">✓</span><span class="pull-text">刷新成功</span>';
 
         setTimeout(() => {
