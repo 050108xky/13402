@@ -4707,6 +4707,46 @@ textarea.input-selector {
     transform: none;
 }
 
+/* 忘记密码链接 */
+.auth-links {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.forgot-password-link {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.forgot-password-link:hover {
+    color: #00d4ff;
+}
+
+/* 忘记密码模态框标题 */
+.auth-title {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #fff;
+    font-size: 20px;
+}
+
+/* 重置密码用户信息 */
+.reset-user-info {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 8px;
+}
+
+.reset-user-info span {
+    color: #00d4ff;
+    font-weight: bold;
+}
+
 /* 我的建议标记 */
 .my-suggestion-badge {
     display: inline-flex;
@@ -4980,13 +5020,12 @@ textarea.input-selector {
 }
 
 .chat-message-actions {
+    display: none;
     margin-top: 4px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
 }
 
-.chat-message:hover .chat-message-actions {
-    opacity: 1;
+.chat-message.show-actions .chat-message-actions {
+    display: block;
 }
 
 .chat-message-withdraw {
@@ -5500,4 +5539,50 @@ textarea.input-selector {
     .admin-preset-btns {
         gap: 4px;
     }
+}
+
+/* ========== Toast 通知栏 ========== */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: rgba(10, 14, 39, 0.95);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s ease, toastFadeOut 0.3s ease 2.7s forwards;
+    max-width: 320px;
+    word-break: break-word;
+}
+
+.toast-success { border-left: 4px solid #00ff88; }
+.toast-error   { border-left: 4px solid #ff6b6b; }
+.toast-warning { border-left: 4px solid #ffc107; }
+.toast-info    { border-left: 4px solid #00d4ff; }
+
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastFadeOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(100%); }
 }
