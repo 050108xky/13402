@@ -5461,3 +5461,9 @@ textarea
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     }
 }
+
+@media (min-width: 1024px) {
+    .desktop-hide {
+        display: none !important;
+    }
+}
