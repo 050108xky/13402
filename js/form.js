@@ -254,12 +254,34 @@ function viewImage(src, event) {
         viewer = document.createElement('div');
         viewer.id = 'imageViewer';
         viewer.className = 'image-viewer';
-        viewer.onclick = () => closeImageViewer();
+        
+        // 允许通过点击背景关闭
+        viewer.onclick = (e) => {
+            if (e.target === viewer) closeImageViewer();
+        };
+        
+        // 添加关闭按钮
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'image-viewer-close';
+        closeBtn.innerHTML = '✕';
+        closeBtn.onclick = closeImageViewer;
+        viewer.appendChild(closeBtn);
+        
+        const imgContainer = document.createElement('div');
+        imgContainer.className = 'image-viewer-content';
+        const img = document.createElement('img');
+        img.id = 'imageViewerImg';
+        imgContainer.appendChild(img);
+        viewer.appendChild(imgContainer);
+        
         document.body.appendChild(viewer);
     }
 
-    viewer.innerHTML = `<img src="${src}" alt="大图">`;
+    const img = document.getElementById('imageViewerImg');
+    if (img) img.src = src;
+    
     viewer.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // 防止背景滚动
 }
 
 // 关闭图片查看器
@@ -267,6 +289,7 @@ function closeImageViewer() {
     const viewer = document.getElementById('imageViewer');
     if (viewer) {
         viewer.style.display = 'none';
+        document.body.style.overflow = ''; // 恢复背景滚动
     }
 }
 
