@@ -2550,58 +2550,55 @@ body {
         width: 100%;
     }
 
-    /* 移动端性能优化：禁用大部分动画 */
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.1s !important;
-    }
+    /* === 移动端性能优化（精细化） === */
 
-    /* 只保留必要的交互反馈 */
-    .submit-btn:active,
-    .modal-btn:active,
-    .like-btn:active {
-        transform: scale(0.95);
-    }
-
-    /* 禁用粒子背景 */
+    /* 禁用粒子背景（最耗性能） */
     .particles {
         display: none;
     }
 
-    /* 简化玻璃效果 */
-    .glass-form,
-    .suggestion-card,
-    .modal-content {
-        backdrop-filter: none;
-        -webkit-backdrop-filter: none;
-        background: rgba(10, 14, 39, 0.95);
+    /* 禁用耗性能的装饰动画，保留轻量过渡和彩虹文字 */
+    .type-selector:hover,
+    .type-selector.has-value {
+        animation: none;
+    }
+    .type-option:hover .type-icon {
+        animation: none;
+        filter: none;
+    }
+    .admin-mode-btn.active {
+        animation: none;
     }
 
-    /* 简化边框效果 */
+    /* 简化伪元素装饰 */
     .suggestion-card::before,
     .suggestion-card::after,
-    .glass-form::before {
+    .glass-form::before,
+    .type-selector::before,
+    .type-selector::after {
         display: none;
     }
 
-    /* 禁用文字渐变动画 */
-    .title-text {
-        animation: none;
+    /* 保留半透明玻璃效果，降低模糊度 */
+    .glass-form,
+    .suggestion-card,
+    .modal-content {
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        background: rgba(10, 14, 39, 0.88);
     }
 
-    /* 禁用徽标动画 */
-    .count-badge,
-    .badgePulse {
-        animation: none;
+    /* 交互反馈 */
+    .submit-btn:active,
+    .modal-btn:active,
+    .like-btn:active {
+        transform: scale(0.96);
     }
 }
 
 /* Checkbox 样式 */
 .checkbox-group {
-    margin-bottom: 25px;
+    margin-bottom: 16px;
 }
 
 .checkbox-label {
@@ -2860,21 +2857,10 @@ body {
 }
 
 
-
-/* 覆盖原有的 input 和 textarea 样式 */
-.form-group input.input-selector,
-.form-group textarea
-
-/* textarea 特定样式 */
-textarea
-
-
-
 .type-selector > * {
     position: relative;
     z-index: 2;
 }
-
 
 
 .input-selector::placeholder {
@@ -2917,21 +2903,6 @@ textarea
 }
 
 
-
-
-
-
-    50% {
-        opacity: 1;
-        transform: translateX(0);
-    }
-    100% {
-        opacity: 0;
-        top: 100%;
-        transform: translateX(100%);
-    }
-}
-
 .type-selector:hover::after {
     animation-duration: 1.5s;
     background: linear-gradient(90deg, transparent, var(--primary-color), var(--accent-color), transparent);
@@ -2939,18 +2910,6 @@ textarea
     animation: scanLinePulse 1.5s ease-in-out infinite;
 }
 
-
-
-
-    50% {
-        opacity: 1;
-        transform: scaleY(2);
-    }
-    100% {
-        opacity: 0.5;
-        transform: scaleY(1);
-    }
-}
 
 .type-selector:hover::before {
     left: 100%;
@@ -2961,9 +2920,6 @@ textarea
         transparent 100%
     );
 }
-
-
-
 
 
 @keyframes particleBurst {
@@ -3017,37 +2973,6 @@ textarea
     background-size: 100% 100%, 200% 200%, 100% 100%;
 }
 
-
-
-
-
-
-    50% {
-        background-position: 100% 100%, 0% 0%, 0% 0%;
-    }
-}
-
-
-    50% {
-        background-position: 100% 100%, 0% 0%;
-    }
-    100% {
-        background-position: 0% 0%, 0% 0%;
-    }
-}
-
-
-    50% {
-        border-color: var(--accent-color);
-        box-shadow:
-            0 0 25px rgba(0, 255, 136, 0.4),
-            0 0 50px rgba(0, 255, 136, 0.2),
-            0 0 75px rgba(0, 255, 136, 0.1),
-            0 0 0 2px rgba(0, 255, 136, 0.4),
-            0 0 0 4px rgba(0, 255, 136, 0.2),
-            0 0 0 6px rgba(0, 255, 136, 0.1);
-    }
-}
 
 .selected-type-text {
     color: var(--text-secondary);
@@ -3556,7 +3481,6 @@ textarea
         rgba(0, 0, 0, 0.5),
         linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, transparent 50%);
 }
-
 
 
 @keyframes cardGlow {
@@ -4134,7 +4058,7 @@ textarea
     }
 
     .header {
-        margin-bottom: 25px;
+        margin-bottom: 16px;
     }
 
     .title {
@@ -4168,22 +4092,32 @@ textarea
     }
 
     .glass-form {
-        padding: 20px 15px;
+        padding: 16px 14px;
+        border-radius: 18px;
     }
 
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 14px;
+    }
+
+    .form-group label {
+        margin-bottom: 6px;
+        font-size: 0.9rem;
     }
 
     .form-group input,
     .form-group textarea {
-        padding: 12px 15px;
+        padding: 11px 14px;
         font-size: 16px; /* 防止 iOS 缩放 */
     }
 
     .submit-btn {
-        padding: 15px 20px;
+        padding: 14px 20px;
         font-size: 1rem;
+    }
+
+    .form-container {
+        margin-bottom: 30px;
     }
 
     .suggestions-container {
@@ -4192,9 +4126,9 @@ textarea
 
     .section-header {
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         align-items: flex-start;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
 
     .section-title {
@@ -4221,17 +4155,17 @@ textarea
 
     .suggestions-list {
         grid-template-columns: 1fr;
-        gap: 15px;
+        gap: 12px;
     }
 
     .suggestion-card {
-        padding: 18px;
-        border-radius: 16px;
+        padding: 15px;
+        border-radius: 14px;
     }
 
-    /* 移动端简化动画，保留炫彩效果 */
+    /* 移动端简化动画 */
     .suggestion-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-3px);
     }
 
     /* 使用 GPU 加速 */
@@ -5435,34 +5369,28 @@ textarea
     to   { opacity: 0; transform: translateX(100%); }
 }
 
-/* Frontend Design - Desktop Spatial Composition */
+/* === PC端分栏布局 >= 1024px === */
 @media (min-width: 1024px) {
     .container {
         display: grid;
-        grid-template-columns: 380px 1fr;
-        gap: 50px;
+        grid-template-columns: 400px 1fr;
+        gap: 40px;
         align-items: start;
         max-width: 1400px;
     }
     .header {
         grid-column: 1 / -1;
-        margin-bottom: 20px;
-        text-align: left;
-        padding-left: 10px;
+        text-align: center;
     }
     .form-container {
         position: sticky;
-        top: 40px;
+        top: 20px;
         margin-bottom: 0;
     }
-    /* 弱化背景毛玻璃边框，让它融入背景 */
     .glass-form {
         border-color: rgba(255, 255, 255, 0.05);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     }
-}
-
-@media (min-width: 1024px) {
     .desktop-hide {
         display: none !important;
     }
