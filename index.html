@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>我们的土木</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 背景粒子效果 -->
+    <div class="particles"></div>
+    
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 标题区域 -->
+        <header class="header">
+            <h1 class="title">
+                <span class="title-icon">⚡</span>
+                <span class="title-text" id="rainbowTitle"></span>
+                <span class="title-icon">⚡</span>
+            </h1>
+            <div class="header-btns">
+                <button class="header-btn jump-btn desktop-hide" onclick="document.querySelector('.suggestions-container').scrollIntoView({ behavior: 'smooth' })">
+                    <span>👀</span> 查看建议
+                </button>
+                <div id="userPanel" class="user-panel" style="display: none;">
+                    <span id="userDisplay" class="user-display"></span>
+                    <span id="levelBadge" class="level-badge" style="display: none;"></span>
+                    <span id="adminBadge" class="admin-badge" style="display: none;">👑 管理员</span>
+                    <button id="adminLevelBtn" class="header-btn admin-level-btn" style="display: none;" onclick="showAdminLevelModal()">⚙️ 等级管理</button>
+                    <button class="header-btn logout-btn" onclick="logout()">退出</button>
+                </div>
+                <button id="loginBtn" class="header-btn login-header-btn" onclick="showLoginModal()">
+                    <span>👤</span> 登录
+                </button>
+                <button class="header-btn chat-header-btn mobile-only" onclick="toggleChatWindow()">
+                    <span>💬</span> 聊天室
+                    <span class="chat-toggle-badge" id="chatBadge" style="display: none;">0</span>
+                </button>
+                <button class="header-btn announce-header-btn" onclick="showAnnouncementModal()">
+                    <span>📢</span> 公告
+                </button>
+            </div>
+        </header>
+
+        <!-- 表单区域 -->
+        <div class="form-container">
+            <form id="suggestionForm" class="glass-form" novalidate>
+                <div class="form-group">
+                    <label for="name">姓名</label>
+                    <div class="input-wrapper">
+                        <div class="rainbow-display" id="nameDisplay"></div>
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            class="input-selector rainbow-input"
+                            placeholder="请输入你的姓名"
+                            autocomplete="off"
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="type">意见类型</label>
+                    <input type="hidden" id="type" name="type" required>
+                    <div class="type-selector" id="typeSelector" onclick="openTypeModal()">
+                        <span id="selectedTypeText" class="selected-type-text">请选择类型</span>
+                        <span class="selector-arrow">▾</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="suggestion">具体意见（必填）</label>
+                    <div class="input-wrapper textarea-wrapper">
+                        <div class="rainbow-display textarea-display" id="suggestionDisplay"></div>
+                        <textarea
+                            id="suggestion"
+                            name="suggestion"
+                            class="input-selector rainbow-input"
+                            placeholder="请详细描述你的建议..."
+                        ></textarea>
+                    </div>
+                    <div class="char-count">
+                        已输入 <span id="charCount">0</span> 字
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>添加图片（可选，最多3张）</label>
+                    <div class="image-upload-area" id="imageUploadArea">
+                        <input type="file" id="imageInput" accept="image/*" multiple style="display: none;" onchange="handleImageSelect(event)">
+                        <button type="button" class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                            <span class="upload-icon">📷</span>
+                            <span>点击上传图片</span>
+                        </button>
+                        <div class="image-preview-list" id="imagePreviewList"></div>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="anonymous" name="anonymous">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">匿名提交（所有人都看不到你的姓名，包括管理员）</span>
+                    </label>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="adminOnly" name="adminOnly">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">仅管理员可见（其他人看不到这条建议）</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <span class="btn-text">提交建议</span>
+                    <span class="btn-icon">🚀</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- 意见展示区域 -->
+        <div class="suggestions-container">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span>💬</span>
+                    已收到的建议
+                    <span id="suggestionCount" class="count-badge">0</span>
+                </h2>
+            </div>
+            
+            <!-- 数据统计面板 -->
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalCount">0</div>
+                        <div class="stat-label">总建议数</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="repliedCount">0</div>
+                        <div class="stat-label">已回复</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="todayCount">0</div>
+                        <div class="stat-label">今日新增</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 类型分布图 -->
+            <div class="type-distribution">
+                <div class="distribution-bar" id="distributionBar"></div>
+                <div class="distribution-legend" id="distributionLegend"></div>
+            </div>
+            
+            <!-- 批量操作工具栏 -->
+            <div id="batchToolbar" class="batch-toolbar" style="display: none;">
+                <div class="batch-select-all">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">全选</span>
+                    </label>
+                    <span id="selectedCount" class="selected-count">已选择 0 条</span>
+                </div>
+                <div class="batch-actions">
+                    <button class="batch-btn batch-delete-btn" onclick="batchDelete()">🗑️ 批量删除</button>
+                </div>
+            </div>
+            
+            <div id="suggestionsList" class="suggestions-list">
+                <div class="empty-state">
+                    <div class="empty-icon">📝</div>
+                    <p>还没有收到任何建议</p>
+                    <p class="empty-hint">成为第一个提交建议的人吧！</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 聊天室浮动窗口 -->
+    <div id="chatWindow" class="chat-window">
+        <div class="chat-window-header">
+            <h3>💬 聊天室</h3>
+            <button class="chat-window-close" onclick="toggleChatWindow()">✕</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-loading">加载中...</div>
+        </div>
+        <div class="chat-input-area">
+            <textarea id="chatInput" placeholder="说点什么..." rows="1"></textarea>
+            <div class="chat-options">
+                <label class="checkbox-label small">
+                    <input type="checkbox" id="chatAnonymous">
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">匿名</span>
+                </label>
+                <button class="chat-send-btn" onclick="sendChatMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 桌面端聊天室浮动按钮 -->
+    <div class="chat-toggle-btn desktop-only" id="chatToggleBtn" onclick="toggleChatWindow()">
+        <span class="chat-toggle-icon">💬</span>
+        <span class="chat-toggle-text">聊天室</span>
+        <span class="chat-toggle-badge" id="chatBadgeDesktop" style="display: none;">0</span>
+    </div>
+
+    <!-- 提交成功提示 -->
+    <div id="successModal" class="modal">
+        <div class="modal-content glass-effect">
+            <div class="success-icon">✓</div>
+            <h3>提交成功！</h3>
+            <p>感谢你的建议，我们会认真考虑</p>
+            <button class="modal-close-btn" onclick="closeModal()">确定</button>
+        </div>
+    </div>
+
+    <!-- 意见类型选择模态框 -->
+    <div id="typeModal" class="modal">
+        <div class="modal-content glass-effect type-modal-content">
+            <h3>选择意见类型</h3>
+            <div class="type-options">
+                <div class="type-option" data-value="learning" onclick="selectType('learning')">
+                    <span class="type-icon">📚</span>
+                    <span class="type-name">学习建议</span>
+                    <span class="type-desc">关于学习方面的建议</span>
+                </div>
+                <div class="type-option" data-value="activity" onclick="selectType('activity')">
+                    <span class="type-icon">🎉</span>
+                    <span class="type-name">活动建议</span>
+                    <span class="type-desc">关于班级活动的建议</span>
+                </div>
+                <div class="type-option" data-value="class" onclick="selectType('class')">
+                    <span class="type-icon">👥</span>
+                    <span class="type-name">班级管理</span>
+                    <span class="type-desc">关于班级管理的建议</span>
+                </div>
+                <div class="type-option" data-value="other" onclick="selectType('other')">
+                    <span class="type-icon">💡</span>
+                    <span class="type-name">其他建议</span>
+                    <span class="type-desc">其他类型的建议</span>
+                </div>
+            </div>
+            <button class="modal-close-btn" onclick="closeTypeModal()">取消</button>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content glass-effect">
+            <div class="confirm-icon">⚠️</div>
+            <h3 id="confirmTitle">确认删除</h3>
+            <p id="confirmMessage">确定要执行此操作吗？</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeConfirmModal()">取消</button>
+                <button class="modal-btn modal-btn-confirm" id="confirmBtn" onclick="executeConfirm()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示模态框 -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content glass-effect">
+            <div class="message-icon" id="messageIcon">ℹ️</div>
+            <h3 id="messageTitle">提示</h3>
+            <p id="messageContent">操作成功</p>
+            <button class="modal-close-btn" onclick="closeMessageModal()">确定</button>
+        </div>
+    </div>
+
+    <!-- 登录/注册模态框 -->
+    <div id="authModal" class="modal">
+        <div class="modal-content glass-effect auth-modal">
+            <button class="detail-close-btn" onclick="closeAuthModal()">✕</button>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">登录</button>
+                <button class="auth-tab" data-tab="register" onclick="switchAuthTab('register')">注册</button>
+            </div>
+
+            <!-- 登录表单 -->
+            <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="loginUsername" placeholder="请输入用户名" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码" required>
+                </div>
+                <button type="submit" class="auth-submit-btn">登录</button>
+                <div class="auth-links">
+                    <a href="#" onclick="showForgotPasswordModal()" class="forgot-password-link">忘记密码？</a>
+                </div>
+            </form>
+
+            <!-- 注册表单 -->
+            <form id="registerForm" class="auth-form" style="display: none;" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="registerUsername" placeholder="请输入用户名" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>显示名称（可选）</label>
+                    <input type="text" id="registerDisplayName" placeholder="显示给他人的名字">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="registerPassword" placeholder="请输入密码" required>
+                </div>
+                <div class="form-group">
+                    <label>确认密码</label>
+                    <input type="password" id="registerPasswordConfirm" placeholder="请再次输入密码" required>
+                </div>
+                <button type="submit" class="auth-submit-btn">注册</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 忘记密码模态框 -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-content glass-effect auth-modal">
+            <button class="detail-close-btn" onclick="closeForgotPasswordModal()">✕</button>
+            <h3 class="auth-title">重置密码</h3>
+
+            <!-- 步骤1：输入用户名 -->
+            <div id="forgotStep1">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="forgotUsername" placeholder="请输入用户名" autocomplete="off">
+                </div>
+                <button class="auth-submit-btn" onclick="findUserForReset()">下一步</button>
+            </div>
+
+            <!-- 步骤2：设置新密码 -->
+            <div id="forgotStep2" style="display: none;">
+                <p class="reset-user-info">正在重置：<span id="resetTargetUser"></span></p>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="newPassword" placeholder="请输入新密码">
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="newPasswordConfirm" placeholder="请再次输入新密码">
+                </div>
+                <button class="auth-submit-btn" onclick="resetPassword()">确认重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 公告弹窗 -->
+    <div id="announcementModal" class="modal">
+        <div class="modal-content glass-effect announce-modal">
+            <button class="detail-close-btn" onclick="closeAnnouncementModal()">✕</button>
+            <h3 class="announce-title">📢 公告栏</h3>
+            <!-- 管理员发布公告 -->
+            <div id="announcePublishSection" class="announce-publish" style="display: none;">
+                <input type="text" id="announceTitleInput" class="announce-input" placeholder="公告标题">
+                <textarea id="announceContentInput" class="announce-textarea" placeholder="公告内容" rows="3"></textarea>
+                <button class="announce-publish-btn" onclick="publishAnnouncement()">发布公告</button>
+            </div>
+            <div id="announcementContent" class="announce-content">
+                <div class="announce-loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员等级管理模态框 -->
+    <div id="adminLevelModal" class="modal">
+        <div class="modal-content glass-effect admin-level-modal">
+            <button class="detail-close-btn" onclick="closeAdminLevelModal()">✕</button>
+            <h3 class="admin-level-title">⚙️ 等级管理</h3>
+
+            <!-- 搜索 -->
+            <div class="admin-level-search">
+                <input type="text" id="adminLevelSearchInput" placeholder="搜索用户名..." autocomplete="off">
+            </div>
+
+            <!-- 用户列表 -->
+            <div id="adminLevelList" class="admin-level-list">
+                <div class="admin-level-loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 建议详情模态框 -->
+    <div id="detailModal" class="modal">
+        <div class="detail-modal-wrapper">
+            <button class="detail-close-btn-outside" onclick="closeDetailModal()" title="关闭">✕</button>
+            <div class="modal-content glass-effect detail-modal">
+                <div class="detail-header">
+                    <span id="detailType" class="detail-type"></span>
+                    <span id="detailPinned" class="pinned-badge" style="display: none;">📌 已置顶</span>
+                </div>
+                <div class="detail-meta">
+                    <span id="detailAuthor" class="detail-author"></span>
+                    <span id="detailTime" class="detail-time"></span>
+                </div>
+                <div class="detail-content">
+                    <h4>建议内容</h4>
+                    <div id="detailContent" class="detail-text"></div>
+                </div>
+                <div id="detailReplySection" class="detail-reply" style="display: none;">
+                    <h4>管理员回复</h4>
+                    <div id="detailReply" class="detail-text reply-text"></div>
+                    <span id="detailReplyTime" class="detail-time"></span>
+                </div>
+                <div class="detail-footer">
+                    <div class="detail-likes">
+                        <span id="detailLikes">0</span> 点赞
+                    </div>
+                </div>
+                
+                <!-- 评论区 -->
+                <div class="comments-section">
+                    <h4>💬 讨论 (<span id="commentCount">0</span>)</h4>
+                    <div class="comment-input-area">
+                        <textarea id="commentInput" placeholder="发表你的看法..." rows="2"></textarea>
+                        <div class="comment-options">
+                            <label class="checkbox-label small">
+                                <input type="checkbox" id="commentAnonymous">
+                                <span class="checkbox-custom"></span>
+                                <span class="checkbox-text">匿名评论</span>
+                            </label>
+                            <button class="comment-submit-btn" onclick="submitComment()">发送</button>
+                        </div>
+                    </div>
+                    <div id="commentsList" class="comments-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页面内联 Toast 通知容器 -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Supabase 客户端库 -->
+    <script src="supabase.min.js"></script>
+
+    <!-- Supabase 配置文件 -->
+    <script src="config.js"></script>
+
+    <!-- 模块化 JS（按依赖顺序加载） -->
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/levels.js"></script>
+    <script src="js/admin-levels.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/announcements.js"></script>
+    <script src="js/ui-effects.js"></script>
+    <script src="js/form.js"></script>
+    <script src="js/suggestions.js"></script>
+    <script src="js/detail.js"></script>
+    <script src="js/likes.js"></script>
+    <script src="js/chat.js?v=10"></script>
+    <script src="js/realtime.js?v=10"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
