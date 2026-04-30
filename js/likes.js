@@ -1,19 +1,58 @@
 // ========== 点赞系统 ==========
 
-// 加载用户点赞记录 - 从数据库批量获取
+// 加载用户点赞记录 - 从数据库同步
+async function syncUserLikesFromDB() {
+    if (!supabaseClient) return;
+    
+    try {
+        let query = supabaseClient
+            .from('likes')
+            .select('suggestion_id');
+            
+        if (currentUser) {
+            query = query.or(`user_id.eq.${currentUser.id},anonymous_user_id.eq.${anonymousUserId}`);
+        } else {
+            query = query.eq('anonymous_user_id', anonymousUserId);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        if (data) {
+            data.forEach(item => userLikes.add(item.suggestion_id));
+            saveUserLikes();
+            
+            // 更新所有卡片 UI
+            document.querySelectorAll('.suggestion-card').forEach(card => {
+                const sid = card.dataset.suggestionId;
+                const suggestion = allSuggestions.find(s => s.id === sid);
+                if (suggestion) {
+                    updateLikeButton(card, sid, userLikes.has(sid), suggestion.likesCount);
+                }
+            });
+        }
+    } catch (e) {
+        console.error('从数据库同步点赞失败:', e);
+    }
+}
+
+// 修改 loadUserLikes 让它更智能
 async function loadUserLikes() {
-    // 先从本地缓存加载（立即显示）
+    // 1. 先从本地缓存加载（立即显示）
     try {
         const stored = localStorage.getItem(USER_LIKES_KEY);
         if (stored) {
-            userLikes = new Set(JSON.parse(stored));
+            const list = JSON.parse(stored);
+            userLikes = new Set(list);
         }
     } catch (e) {
         userLikes = new Set();
     }
-
-    // 等待 Supabase 初始化完成后再同步
-    // 注意：不在这里调用 syncUserLikesFromDB，由 loadSuggestions 统一处理
+    
+    // 2. 如果已连接数据库，进行云端同步
+    if (supabaseClient) {
+        syncUserLikesFromDB();
+    }
 }
 
 // 保存用户点赞记录
@@ -57,18 +96,26 @@ async function syncLikeToDB(suggestionId, isLiked, newCount) {
     try {
         if (!isLiked) {
             // 取消点赞
-            await supabaseClient
+            let query = supabaseClient
                 .from('likes')
                 .delete()
-                .eq('suggestion_id', suggestionId)
-                .eq('anonymous_user_id', anonymousUserId);
+                .eq('suggestion_id', suggestionId);
+            
+            if (currentUser) {
+                query = query.eq('user_id', currentUser.id);
+            } else {
+                query = query.eq('anonymous_user_id', anonymousUserId);
+            }
+            
+            await query;
         } else {
             // 添加点赞
             await supabaseClient
                 .from('likes')
                 .insert([{
                     suggestion_id: suggestionId,
-                    anonymous_user_id: anonymousUserId
+                    anonymous_user_id: anonymousUserId,
+                    user_id: currentUser ? currentUser.id : null
                 }]);
         }
     } catch (error) {
