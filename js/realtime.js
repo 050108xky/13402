@@ -205,12 +205,16 @@ async function handleLikeChange(payload) {
 
     const suggestionId = eventType === 'INSERT' ? newRecord.suggestion_id : oldRecord.suggestion_id;
     const l_anonymousUserId = eventType === 'INSERT' ? newRecord.anonymous_user_id : oldRecord.anonymous_user_id;
+    const l_userId = eventType === 'INSERT' ? newRecord.user_id : oldRecord.user_id;
 
     const suggestion = allSuggestions.find(s => s.id === suggestionId);
     if (!suggestion) return;
 
     // 关键修复：如果是主人的点赞记录（来自其他设备），同步更新主人的点赞状态
-    if (l_anonymousUserId === anonymousUserId) {
+    // 同时检查 匿名ID 和 登录用户ID
+    const isMatched = (l_anonymousUserId === anonymousUserId) || (currentUser && l_userId === currentUser.id);
+    
+    if (isMatched) {
         if (eventType === 'INSERT') {
             userLikes.add(suggestionId);
         } else if (eventType === 'DELETE') {
