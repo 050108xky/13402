@@ -204,9 +204,20 @@ async function handleLikeChange(payload) {
     const { eventType, new: newRecord, old: oldRecord } = payload;
 
     const suggestionId = eventType === 'INSERT' ? newRecord.suggestion_id : oldRecord.suggestion_id;
+    const l_anonymousUserId = eventType === 'INSERT' ? newRecord.anonymous_user_id : oldRecord.anonymous_user_id;
 
     const suggestion = allSuggestions.find(s => s.id === suggestionId);
     if (!suggestion) return;
+
+    // 关键修复：如果是主人的点赞记录（来自其他设备），同步更新主人的点赞状态
+    if (l_anonymousUserId === anonymousUserId) {
+        if (eventType === 'INSERT') {
+            userLikes.add(suggestionId);
+        } else if (eventType === 'DELETE') {
+            userLikes.delete(suggestionId);
+        }
+        saveUserLikes();
+    }
 
     if (eventType === 'INSERT' && suggestion.userId) {
         addUserExp(suggestion.userId, 1, 'liked');
@@ -220,15 +231,13 @@ async function handleLikeChange(payload) {
 
     const dbCount = data?.likes_count || 0;
 
-    if (dbCount !== suggestion.likesCount) {
+    if (dbCount !== suggestion.likesCount || l_anonymousUserId === anonymousUserId) {
         suggestion.likesCount = dbCount;
 
         const card = document.querySelector(`[data-suggestion-id="${suggestionId}"]`);
         if (card) {
-            const countSpan = card.querySelector('.like-count');
-            if (countSpan) {
-                countSpan.textContent = dbCount;
-            }
+            const isLiked = userLikes.has(suggestionId);
+            updateLikeButton(card, suggestionId, isLiked, dbCount);
         }
     }
 }

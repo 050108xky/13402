@@ -399,6 +399,9 @@ async function handleSubmit(e) {
                 allSuggestions.push(newSuggestion);
             }
 
+            // 关键：由于是自己提交的，自动给自己的点赞列表加上（如果后端触发了点赞）
+            // 注意：这里建议保持全量数据同步逻辑
+
             // 重置筛选和页码
             currentFilter = 'all';
             currentSearch = '';
