@@ -298,3 +298,29 @@ async function loadAdminUserIds() {
 function createAdminTagHTML() {
     return '<span class="chat-level-tag admin-tag">👑 管理员</span>';
 }
+
+// 更新聊天室等级标签与气泡颜色（异步获取经验后调用）
+function updateChatLevelTags() {
+    document.querySelectorAll('.chat-level-tag[data-user-id]').forEach(el => {
+        const userId = el.dataset.userId;
+        if (!userId) return;
+        const levelInfo = getUserLevelInfo(userId);
+        if (!levelInfo) return;
+
+        const { level, title, color } = levelInfo;
+        if (color === 'rainbow') {
+            el.className = 'chat-level-tag rainbow';
+            el.style.cssText = '';
+        } else {
+            el.className = 'chat-level-tag';
+            el.style.cssText = `background:${color}20;border:1px solid ${color}60;color:${color};`;
+        }
+        el.textContent = `LV${level} ${title}`;
+        el.removeAttribute('data-user-id');
+
+        // 同步更新该用户所有消息气泡颜色
+        document.querySelectorAll(`.chat-message-content[data-bubble-user-id="${userId}"]`).forEach(bubble => {
+            applyBubbleStyle(bubble, color);
+        });
+    });
+}

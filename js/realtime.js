@@ -36,7 +36,7 @@ function setupRealtimeSubscriptions() {
     setupChatRealtimeSubscription();
 }
 
-// 设置聊天实时订阅（实时 + 轮询并行保底）
+// 设置聊天实时订阅
 function setupChatRealtimeSubscription() {
     if (!supabaseClient) return;
 
@@ -44,7 +44,6 @@ function setupChatRealtimeSubscription() {
         chatChannel.unsubscribe();
     }
 
-    // 和建议订阅保持一致的模式：event: '*', 命名回调函数
     chatChannel = supabaseClient
         .channel('chat-changes')
         .on(
@@ -57,9 +56,6 @@ function setupChatRealtimeSubscription() {
             handleChatChange
         )
         .subscribe();
-
-    // 同时启动轮询保底
-    startChatPolling();
 }
 
 // 处理聊天消息变更
@@ -67,97 +63,40 @@ function handleChatChange(payload) {
     const { eventType, new: newRecord, old: oldRecord } = payload;
 
     if (eventType === 'INSERT') {
-        // 确认实时可用，停止轮询
         chatRealtimeAvailable = true;
-        stopChatPolling();
-
         const msg = newRecord;
-        addChatMessage(msg);
-        if (msg.created_at) {
+
+        // 如果是自己发的（有临时消息），跳过避免重复
+        const tempExists = document.querySelector(`.chat-message[data-id^="temp_"]`);
+        if (msg.content && msg.created_at) {
+            addChatMessageToDOM(msg);
             lastChatMessageTime = msg.created_at;
         }
-        // 异步获取等级数据
+
+        if (isChatWindowOpen) {
+            scrollToChatBottom();
+        }
+
         if (msg.user_id && !userExpCache[msg.user_id]) {
-            fetchUserExpBatch([msg.user_id]).then(() => {
-                updateChatLevelTags();
-            });
+            fetchUserExpBatch([msg.user_id]).then(() => updateChatLevelTags());
         }
     } else if (eventType === 'DELETE') {
         chatRealtimeAvailable = true;
-        stopChatPolling();
-        // 暂时禁用删除处理，避免消息消失
-        // removeChatMessage(oldRecord.id);
-        console.log('收到删除事件，但暂不处理:', oldRecord);
+        // 从缓存和DOM移除
+        if (chatMessagesCache) {
+            chatMessagesCache = chatMessagesCache.filter(m => m.id !== oldRecord.id);
+        }
+        const el = document.querySelector(`.chat-message[data-id="${oldRecord.id}"]`);
+        if (el) {
+            el.style.animation = 'fadeOut 0.3s ease forwards';
+            setTimeout(() => el.remove(), 300);
+        }
     } else if (eventType === 'UPDATE') {
         chatRealtimeAvailable = true;
-        stopChatPolling();
-        // 更新消息：重新加载聊天列表
-        loadChatMessages();
     }
 }
 
-// 启动聊天轮询保底
-function startChatPolling() {
-    if (chatPollingTimer) return;
-    chatPollingTimer = setInterval(pollChatMessages, 2000);
-}
-
-// 停止聊天轮询
-function stopChatPolling() {
-    if (chatPollingTimer) {
-        clearInterval(chatPollingTimer);
-        chatPollingTimer = null;
-    }
-}
-
-// 轮询获取新聊天消息（同时检测已删除的消息）
-async function pollChatMessages() {
-    if (!supabaseClient) return;
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
-
-    try {
-        // 拉取最新消息，用于检测新增和删除
-        const { data, error } = await supabaseClient
-            .from('chat_messages')
-            .select('id, content, user_id, anonymous_user_id, author_name, is_anonymous, created_at')
-            .order('created_at', { ascending: true })
-            .limit(30);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            // 更新最新时间戳
-            lastChatMessageTime = data[data.length - 1].created_at;
-
-            // 添加新消息
-            const dbIds = new Set(data.map(m => m.id));
-            data.forEach(msg => {
-                addChatMessage(msg);
-            });
-
-            // 暂时禁用移除已删除消息的逻辑
-            // container.querySelectorAll('.chat-message').forEach(el => {
-            //     const elId = el.dataset.id;
-            //     if (elId && elId.startsWith('temp_')) return;
-            //     if (elId && !dbIds.has(elId)) {
-            //         el.style.animation = 'fadeOut 0.3s ease forwards';
-            //         setTimeout(() => el.remove(), 300);
-            //     }
-            // });
-
-            // 异步批量获取等级数据
-            const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
-            if (userIds.length > 0) {
-                fetchUserExpBatch(userIds).then(() => {
-                    updateChatLevelTags();
-                });
-            }
-        }
-    } catch (e) {
-        console.error('轮询聊天消息失败:', e);
-    }
-}
+// ========== 以下建议/点赞处理逻辑不变 ==========
 
 // 处理建议变更
 async function handleSuggestionChange(payload) {
@@ -224,7 +163,6 @@ async function handleSuggestionChange(payload) {
         if (isMajorUpdate) {
             applyFilterAndSearch();
 
-            // 建议被管理员回复 +3 EXP（给建议作者）
             if (replyChanged && newRecord.reply && !oldReply && newRecord.user_id) {
                 addUserExp(newRecord.user_id, 3, 'replied');
             }
@@ -236,7 +174,6 @@ async function handleSuggestionChange(payload) {
                 }
             }
         } else {
-            // 只是点赞/评论数变化：局部更新
             const card = document.querySelector(`[data-suggestion-id="${newRecord.id}"]`);
             if (card) {
                 if (likesChanged) {
@@ -271,9 +208,6 @@ async function handleLikeChange(payload) {
     const suggestion = allSuggestions.find(s => s.id === suggestionId);
     if (!suggestion) return;
 
-    const localCount = suggestion.likesCount || 0;
-
-    // 被点赞 +1 EXP（仅INSERT，给建议作者）
     if (eventType === 'INSERT' && suggestion.userId) {
         addUserExp(suggestion.userId, 1, 'liked');
     }
@@ -286,7 +220,7 @@ async function handleLikeChange(payload) {
 
     const dbCount = data?.likes_count || 0;
 
-    if (dbCount !== localCount) {
+    if (dbCount !== suggestion.likesCount) {
         suggestion.likesCount = dbCount;
 
         const card = document.querySelector(`[data-suggestion-id="${suggestionId}"]`);

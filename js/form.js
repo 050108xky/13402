@@ -149,8 +149,8 @@ function compressImage(file, callback) {
         const img = new Image();
         img.onload = () => {
             // 设置最大尺寸 - 更小以加快上传
-            const maxWidth = 600;
-            const maxHeight = 600;
+            const maxWidth = 500;
+            const maxHeight = 500;
             let width = img.width;
             let height = img.height;
 
@@ -168,8 +168,8 @@ function compressImage(file, callback) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
 
-            // 转换为 base64，质量 0.5（更小）
-            const compressedData = canvas.toDataURL('image/jpeg', 0.5);
+            // 转换为 base64，质量 0.4（更小，上传极快）
+            const compressedData = canvas.toDataURL('image/jpeg', 0.4);
             callback(compressedData);
         };
         img.src = e.target.result;

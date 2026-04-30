@@ -1,178 +1,159 @@
-// ========== 聊天室 ==========
+// ========== 聊天室模块（修复版：乐观更新 + QQ式滚动加载） ==========
 
-// 聊天消息内存缓存（后台预加载后存这里，打开聊天室时直接渲染）
+// 聊天相关状态（注意：chatChannel/isChatWindowOpen/chatPollingTimer/chatRealtimeAvailable/lastChatMessageTime 已在 state.js 中定义）
 let chatMessagesCache = null;
-// 是否正在加载中（防止重复请求）
 let chatLoading = false;
+let chatMessagesPage = 0;       // 当前加载的页数
+const CHAT_PAGE_SIZE = 50;      // 每页加载50条
+let chatHasMore = true;         // 是否还有更多历史消息
+let chatLoadingMore = false;    // 是否正在加载历史
 
-// 切换聊天窗口显示/隐藏
+// 切换聊天窗口（兼容 HTML 中的 toggleChatWindow 调用）
 function toggleChatWindow() {
-    const chatWindow = document.getElementById('chatWindow');
-    const desktopBtn = document.getElementById('chatToggleBtn');
-    const mobileBtn = document.querySelector('.chat-header-btn');
-
-    if (!chatWindow) return;
-
-    isChatWindowOpen = !isChatWindowOpen;
-
     if (isChatWindowOpen) {
-        chatWindow.classList.add('show');
-        if (desktopBtn) desktopBtn.classList.add('active');
-        if (mobileBtn) mobileBtn.classList.add('active');
-        // 清空未读消息数
-        unreadChatCount = 0;
-        updateChatBadge();
-
-        // 有缓存直接渲染，正在加载中就等它完成，否则发起新请求
-        if (chatMessagesCache) {
-            const container = document.getElementById('chatMessages');
-            if (container) {
-                if (chatMessagesCache.length === 0) {
-                    container.innerHTML = `
-                        <div class="chat-empty">
-                            <div class="chat-empty-icon">💬</div>
-                            <p>暂无消息，来发起话题吧！</p>
-                        </div>
-                    `;
-                } else {
-                    renderChatMessages(chatMessagesCache);
-                }
-                scrollToChatBottom();
-            }
-        } else if (!chatLoading) {
-            loadChatMessages();
-        }
-        // chatLoading=true 的情况：后台请求正在飞，loadChatMessages完成后会自动渲染
-
-        // 聚焦输入框
-        setTimeout(() => {
-            const input = document.getElementById('chatInput');
-            if (input) input.focus();
-        }, 300);
+        closeChatWindow();
     } else {
-        chatWindow.classList.remove('show');
-        if (desktopBtn) desktopBtn.classList.remove('active');
-        if (mobileBtn) mobileBtn.classList.remove('active');
-
-        // 移动端关闭聊天室后，轻量级触发重绘修复按钮消失问题
-        if (mobileBtn) {
-            mobileBtn.style.webkitTransform = 'translateZ(0)';
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    mobileBtn.style.webkitTransform = '';
-                });
-            });
-        }
+        openChatWindow();
     }
 }
 
-// 更新聊天室消息徽章
-function updateChatBadge() {
-    const desktopBadge = document.getElementById('chatBadgeDesktop');
-    const mobileBadge = document.getElementById('chatBadge');
+// 打开聊天窗口
+function openChatWindow() {
+    const chatWindow = document.getElementById('chatWindow');
+    if (!chatWindow) return;
+    
+    chatWindow.classList.add('show');
+    isChatWindowOpen = true;
+    chatMessagesPage = 0;
+    chatHasMore = true;
 
-    const show = unreadChatCount > 0 && !isChatWindowOpen;
-    const text = unreadChatCount > 99 ? '99+' : unreadChatCount;
+    // 如果还没有加载过消息，开始加载
+    if (chatMessagesCache === null) {
+        loadChatMessages();
+    } else if (chatMessagesCache.length === 0) {
+        // 加载过但没数据，也再试一次
+        loadChatMessages();
+    } else {
+        // 后台预加载已完成，直接渲染缓存数据
+        renderChatMessages(chatMessagesCache);
+        scrollToChatBottom();
+    }
 
-    [desktopBadge, mobileBadge].forEach(badge => {
-        if (!badge) return;
-        if (show) {
-            badge.textContent = text;
-            badge.style.display = 'flex';
-        } else {
-            badge.style.display = 'none';
-        }
-    });
+    const input = document.getElementById('chatInput');
+    if (input) input.focus();
 }
 
-// 加载聊天消息（后台预加载 + 打开时渲染）
+// 关闭聊天窗口
+function closeChatWindow() {
+    const chatWindow = document.getElementById('chatWindow');
+    if (!chatWindow) return;
+    
+    chatWindow.classList.remove('show');
+    isChatWindowOpen = false;
+}
+
+// 加载聊天消息（首次加载，取最新50条）
 async function loadChatMessages() {
-    // 防止重复请求
     if (chatLoading) return;
     chatLoading = true;
 
     try {
-        console.log('开始加载聊天消息...');
-        
         const { data, error } = await supabaseClient
             .from('chat_messages')
             .select('id, content, user_id, anonymous_user_id, author_name, is_anonymous, created_at')
-            .order('created_at', { ascending: true })
-            .limit(30);
+            .order('created_at', { ascending: false })
+            .limit(CHAT_PAGE_SIZE);
 
-        console.log('加载结果:', { data, error, count: data?.length });
+        if (error) throw error;
 
-        if (error) {
-            console.error('加载错误:', error);
-            throw error;
+        // 反转顺序（降序→升序）
+        const sortedData = (data || []).reverse();
+        chatMessagesCache = sortedData;
+        chatMessagesPage = 1;
+        chatHasMore = sortedData.length >= CHAT_PAGE_SIZE;
+
+        if (sortedData.length > 0) {
+            lastChatMessageTime = sortedData[sortedData.length - 1].created_at;
         }
 
-        // 存入缓存
-        chatMessagesCache = data || [];
-
-        if (data && data.length > 0) {
-            lastChatMessageTime = data[data.length - 1].created_at;
-        }
-
-        // 如果聊天窗口已打开，立即渲染
         if (isChatWindowOpen) {
-            const container = document.getElementById('chatMessages');
-            if (!container) return;
-
-            if (!data || data.length === 0) {
-                container.innerHTML = `
-                    <div class="chat-empty">
-                        <div class="chat-empty-icon">💬</div>
-                        <p>暂无消息，来发起话题吧！</p>
-                    </div>
-                `;
-            } else {
-                renderChatMessages(data);
-                // 异步加载等级
-                const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
-                fetchUserExpBatch(userIds).then(() => {
-                    updateChatLevelTags();
-                });
-            }
+            renderChatMessages(sortedData);
             scrollToChatBottom();
         }
 
     } catch (e) {
+        console.error('加载聊天消息失败:', e);
         if (isChatWindowOpen) {
             const container = document.getElementById('chatMessages');
-            if (container) container.innerHTML = '<div class="chat-loading">加载失败</div>';
+            if (container) container.innerHTML = '<div class="chat-loading">加载失败，请刷新重试</div>';
         }
     } finally {
         chatLoading = false;
     }
 }
 
-// 等级数据加载完后，更新聊天消息中的等级标签（局部更新，不重渲染整个列表）
-function updateChatLevelTags() {
+// 加载更多历史消息（向上翻时调用）
+async function loadMoreChatMessages() {
+    if (chatLoadingMore || !chatHasMore) return;
+    chatLoadingMore = true;
+
+    const container = document.getElementById('chatMessages');
+    if (!container) { chatLoadingMore = false; return; }
+
+    // 记录滚动位置
+    const oldScrollHeight = container.scrollHeight;
+    const oldScrollTop = container.scrollTop;
+
+    try {
+        let query = supabaseClient
+            .from('chat_messages')
+            .select('id, content, user_id, anonymous_user_id, author_name, is_anonymous, created_at')
+            .order('created_at', { ascending: false })
+            .limit(CHAT_PAGE_SIZE);
+
+        if (lastChatMessageTime) {
+            query = query.lt('created_at', lastChatMessageTime);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const sortedData = (data || []).reverse();
+        chatHasMore = sortedData.length >= CHAT_PAGE_SIZE;
+
+        if (sortedData.length > 0) {
+            chatMessagesCache = [...sortedData, ...chatMessagesCache];
+            lastChatMessageTime = sortedData[0].created_at;
+        }
+
+        renderChatMessages(chatMessagesCache);
+
+        requestAnimationFrame(() => {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop;
+        });
+
+        const userIds = [...new Set(sortedData.map(m => m.user_id).filter(Boolean))];
+        if (userIds.length > 0) {
+            fetchUserExpBatch(userIds).then(() => updateChatLevelTags());
+        }
+
+        chatMessagesPage++;
+    } catch (e) {
+        console.error('加载更多消息失败:', e);
+    } finally {
+        chatLoadingMore = false;
+    }
+}
+
+// 滚动加载更多（检测滚动到顶部）
+function initChatScrollListener() {
     const container = document.getElementById('chatMessages');
     if (!container) return;
 
-    container.querySelectorAll('.chat-message').forEach(msgEl => {
-        const userId = msgEl.dataset.userId;
-        if (!userId) return;
-
-        const levelTagEl = msgEl.querySelector('.chat-level-tag');
-        if (!levelTagEl) return;
-
-        // 管理员不更新等级标签
-        if (adminUserIds.has(userId)) return;
-
-        const levelInfo = getUserLevelInfo(userId);
-        if (!levelInfo) return;
-
-        const { level, title, color } = levelInfo;
-        levelTagEl.textContent = `LV${level} ${title}`;
-        if (color === 'rainbow') {
-            levelTagEl.className = 'chat-level-tag rainbow';
-            levelTagEl.style.cssText = '';
-        } else {
-            levelTagEl.className = 'chat-level-tag';
-            levelTagEl.style.cssText = `background:${color}20;border:1px solid ${color}60;color:${color};`;
+    container.addEventListener('scroll', () => {
+        if (container.scrollTop < 10 && chatHasMore && !chatLoadingMore) {
+            loadMoreChatMessages();
         }
     });
 }
@@ -182,48 +163,31 @@ function renderChatMessages(messages) {
     const container = document.getElementById('chatMessages');
     if (!container) return;
 
-    container.innerHTML = messages.map(msg => {
-        const isOwn = (currentUser && msg.user_id === currentUser.id) ||
-                      (!currentUser && msg.anonymous_user_id && msg.anonymous_user_id === anonymousUserId);
-        const isAdmin = currentUser && currentUser.isAdmin;
-
-        const msgTime = new Date(msg.created_at).getTime();
-        const timePassed = Date.now() - msgTime;
-        const canWithdraw = isOwn && timePassed < CHAT_WITHDRAW_TIME;
-
-        const canAdminDelete = isAdmin;
-
-        // 获取等级信息（管理员显示管理员标签）
-        const isAdminUser = msg.user_id && adminUserIds.has(msg.user_id);
-        const levelInfo = (!isAdminUser && msg.user_id) ? getUserLevelInfo(msg.user_id) : null;
-
-        // 等级标签：有缓存直接显示，没有则留空（异步加载后会通过 updateChatLevelTags 补充）
-        const levelTagHTML = isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : (msg.user_id ? '<span class="chat-level-tag"></span>' : ''));
-
-        return `
-            <div class="chat-message ${isOwn ? 'own-message' : ''} ${isAdminUser && !isOwn ? 'admin' : ''}" data-id="${msg.id}" data-user-id="${msg.user_id || ''}">
-                <div class="chat-message-header">
-                    <span class="chat-message-author">${msg.is_anonymous ? '👤 匿名用户' : escapeHtml(msg.author_name)}</span>
-                    ${levelTagHTML}
-                    <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
-                </div>
-                <div class="chat-message-content">${escapeHtml(msg.content)}</div>
-                ${canWithdraw ? `
-                    <div class="chat-message-actions">
-                        <button class="chat-message-withdraw" onclick="withdrawChatMessage('${msg.id}')">↩️ 撤回</button>
-                    </div>
-                ` : ''}
-                ${canAdminDelete && !canWithdraw ? `
-                    <div class="chat-message-actions">
-                        <button class="chat-message-delete" onclick="deleteChatMessage('${msg.id}')">🗑️ 删除</button>
-                    </div>
-                ` : ''}
+    if (!messages || messages.length === 0) {
+        container.innerHTML = `
+            <div class="chat-empty">
+                <div class="chat-empty-icon">💬</div>
+                <p>暂无消息，来发起话题吧！</p>
             </div>
         `;
-    }).join('');
+        return;
+    }
 
-    if (isChatWindowOpen) {
-        scrollToChatBottom();
+    container.innerHTML = '';
+    messages.forEach(msg => {
+        addChatMessageToDOM(msg);
+    });
+
+    if (!chatHasMore && messages.length > 0) {
+        const tip = document.createElement('div');
+        tip.className = 'chat-loading';
+        tip.textContent = '—— 没有更多消息了 ——';
+        container.insertBefore(tip, container.firstChild);
+    }
+
+    const userIds = [...new Set(messages.map(m => m.user_id).filter(Boolean))];
+    if (userIds.length > 0) {
+        fetchUserExpBatch(userIds).then(() => updateChatLevelTags());
     }
 }
 
@@ -231,12 +195,96 @@ function renderChatMessages(messages) {
 function scrollToChatBottom() {
     const container = document.getElementById('chatMessages');
     if (container) {
-        container.scrollTop = container.scrollHeight;
+        requestAnimationFrame(() => {
+            container.scrollTop = container.scrollHeight;
+        });
     }
 }
 
-// 发送聊天消息
+// 设置消息气泡边框颜色与称号框一致（只改边框，不改背景）
+function applyBubbleStyle(el, color) {
+    if (!el) return;
+    el.classList.remove('rainbow-bubble');
+    if (color === 'rainbow') {
+        el.style.borderColor = 'transparent';
+    } else {
+        el.style.borderColor = `${color}60`;
+    }
+    el.removeAttribute('data-bubble-user-id');
+}
+
+// 添加消息到 DOM（内部函数）
+function addChatMessageToDOM(msg) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    if (container.querySelector(`[data-id="${msg.id}"]`)) return;
+
+    // 已登录用户按 user_id 绑定，未登录用户才按 anonymous_user_id 绑定
+    const isOwner = currentUser
+        ? msg.user_id === currentUser.id
+        : (msg.anonymous_user_id && msg.anonymous_user_id === anonymousUserId);
+
+    // 管理员可以撤回所有人的消息
+    const isAdmin = currentUser?.isAdmin || false;
+    const canWithdraw = isOwner || isAdmin;
+
+    // 等级标签与气泡颜色：缓存命中则直接渲染，否则留空等异步更新
+    let levelTag = '';
+    let bubbleColor = null;
+    if (msg.user_id) {
+        const levelInfo = getUserLevelInfo(msg.user_id);
+        if (levelInfo) {
+            levelTag = createLevelTagHTML(levelInfo);
+            bubbleColor = levelInfo.color;
+        } else {
+            levelTag = `<span class="chat-level-tag" data-user-id="${msg.user_id}"></span>`;
+        }
+    }
+
+    const el = document.createElement('div');
+    el.className = `chat-message ${isOwner ? 'own-message' : ''}`;
+    el.dataset.id = msg.id;
+    el.dataset.userId = msg.user_id || '';
+    el.dataset.anonymousUserId = msg.anonymous_user_id || '';
+
+    el.innerHTML = `
+        <div class="chat-message-header">
+            <div class="chat-message-author-wrap">
+                <span class="chat-message-author">${escapeHtml(msg.author_name || '匿名用户')}</span>
+                ${levelTag}
+            </div>
+            <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
+        </div>
+        <div class="chat-message-content">${escapeHtml(msg.content)}</div>
+        ${canWithdraw ? `<div class="chat-message-actions">
+            <button class="chat-message-withdraw" onclick="withdrawChatMessage('${msg.id}')">撤回</button>
+        </div>` : ''}
+    `;
+
+    container.appendChild(el);
+
+    // 所有有 user_id 的消息气泡颜色都与发送者称号一致
+    const contentEl = el.querySelector('.chat-message-content');
+    if (contentEl) {
+        if (bubbleColor) {
+            applyBubbleStyle(contentEl, bubbleColor);
+        } else if (msg.user_id) {
+            contentEl.dataset.bubbleUserId = msg.user_id;
+        }
+    }
+
+    const empty = container.querySelector('.chat-empty');
+    if (empty) empty.remove();
+}
+
+// 发送聊天消息（乐观更新）
 async function sendChatMessage() {
+    if (!currentUser) {
+        showMessageModal('需要登录', '请先登录后再发送消息', 'warning');
+        return;
+    }
+
     const input = document.getElementById('chatInput');
     if (!input) return;
 
@@ -244,222 +292,164 @@ async function sendChatMessage() {
     if (!content) return;
 
     const isAnonymous = document.getElementById('chatAnonymous')?.checked || !currentUser;
-
     const btn = document.querySelector('.chat-send-btn');
     if (btn) btn.disabled = true;
+
+    const authorName = (isAnonymous || !currentUser) ? '匿名用户' : (currentUser.displayName || currentUser.username || '用户');
+    const tempId = 'temp_' + Date.now();
+
+    const optimisticMsg = {
+        id: tempId,
+        content: content,
+        user_id: currentUser ? currentUser.id : null,
+        anonymous_user_id: anonymousUserId || null,
+        author_name: authorName,
+        is_anonymous: !!(isAnonymous || !currentUser),
+        created_at: new Date().toISOString()
+    };
+
+    addChatMessageToDOM(optimisticMsg);
+    chatMessagesCache = chatMessagesCache || [];
+    chatMessagesCache.push(optimisticMsg);
 
     try {
         const message = {
             content: content,
             user_id: currentUser ? currentUser.id : null,
             anonymous_user_id: anonymousUserId || null,
-            author_name: (isAnonymous || !currentUser) ? '匿名用户' : (currentUser.displayName || currentUser.username || '用户'),
+            author_name: authorName,
             is_anonymous: !!(isAnonymous || !currentUser)
         };
-
-        console.log('发送消息:', message);
 
         const { data, error } = await supabaseClient
             .from('chat_messages')
             .insert([message])
             .select();
 
-        console.log('发送结果:', { data, error });
-
         if (error) {
-            alert('发送失败: ' + (error.message || error));
-            throw error;
+            const tempEl = document.querySelector(`.chat-message[data-id="${tempId}"]`);
+            if (tempEl) tempEl.remove();
+            chatMessagesCache = chatMessagesCache.filter(m => m.id !== tempId);
+            input.value = content;
+            showMessageModal('发送失败', error.message || String(error), 'error');
+            return;
         }
 
-        // 清空输入框
+        if (data && data.length > 0) {
+            const realMsg = data[0];
+            const tempEl = document.querySelector(`.chat-message[data-id="${tempId}"]`);
+            if (tempEl) {
+                tempEl.dataset.id = realMsg.id;
+                // 同步更新撤回按钮的 onclick，否则点击时仍传临时 ID
+                const withdrawBtn = tempEl.querySelector('.chat-message-withdraw');
+                if (withdrawBtn) {
+                    withdrawBtn.setAttribute('onclick', `withdrawChatMessage('${realMsg.id}')`);
+                }
+            }
+
+            const tempIdx = chatMessagesCache.findIndex(m => m.id === tempId);
+            if (tempIdx >= 0) chatMessagesCache[tempIdx] = realMsg;
+            else chatMessagesCache.push(realMsg);
+            lastChatMessageTime = realMsg.created_at;
+        }
+
         input.value = '';
+        scrollToChatBottom();
 
-        // 重新加载消息
-        chatMessagesCache = null;
-        loadChatMessages();
-
-        // 聊天发言 +1 EXP
         if (currentUser) {
             addUserExp(currentUser.id, 1, 'chat');
         }
 
     } catch (e) {
         console.error('发送消息失败:', e);
-        alert('发送失败: ' + JSON.stringify(e));
+        const tempEl = document.querySelector(`.chat-message[data-id="${tempId}"]`);
+        if (tempEl) tempEl.remove();
+        chatMessagesCache = chatMessagesCache.filter(m => m.id !== tempId);
+        input.value = content;
+        showMessageModal('发送失败', e.message || JSON.stringify(e), 'error');
     }
 
     if (btn) btn.disabled = false;
     input.focus();
 }
 
-// 撤回聊天消息（5分钟内）
-async function withdrawChatMessage(messageId) {
-    showConfirmModal('撤回消息', '确定要撤回这条消息吗？撤回后无法恢复。', async () => {
+// 撤回聊天消息
+function withdrawChatMessage(messageId) {
+    if (!currentUser) return;
+
+    showConfirmModal('确认撤回', '确认撤回这条消息？', async () => {
+        // 临时消息（还在发送中）直接从 DOM 移除，不用请求数据库
+        if (messageId.startsWith('temp_')) {
+            chatMessagesCache = chatMessagesCache.filter(m => m.id !== messageId);
+            const el = document.querySelector(`.chat-message[data-id="${messageId}"]`);
+            if (el) {
+                el.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => el.remove(), 300);
+            }
+            return;
+        }
+
         try {
-            const { error } = await supabaseClient
+            let query = supabaseClient
                 .from('chat_messages')
                 .delete()
                 .eq('id', messageId);
 
-            if (error) throw error;
-
-            const msgEl = document.querySelector(`.chat-message[data-id="${messageId}"]`);
-            if (msgEl) {
-                msgEl.style.animation = 'fadeOut 0.3s ease forwards';
-                setTimeout(() => msgEl.remove(), 300);
+            // 普通用户只能撤回自己的消息，管理员可以撤回所有人的
+            if (!currentUser.isAdmin) {
+                query = query.eq('user_id', currentUser.id);
             }
 
+            const { data, error } = await query.select();
+
+            if (error) throw error;
+
+            chatMessagesCache = chatMessagesCache.filter(m => m.id !== messageId);
+            const el = document.querySelector(`.chat-message[data-id="${messageId}"]`);
+            if (el) {
+                el.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => el.remove(), 300);
+            }
         } catch (e) {
-            console.error('撤回失败:', e);
-            showMessageModal('错误', '撤回失败，请重试', 'error');
+            showMessageModal('撤回失败', e.message || JSON.stringify(e), 'error');
         }
     });
 }
 
-// 删除聊天消息（管理员）
-async function deleteChatMessage(messageId) {
-    showConfirmModal('删除消息', '确定要删除这条消息吗？删除后无法恢复。', async () => {
-        try {
-            const { error } = await supabaseClient
-                .from('chat_messages')
-                .delete()
-                .eq('id', messageId);
+// 初始化滚动监听与消息点击交互（在页面加载时调用）
+function initChatScroll() {
+    initChatScrollListener();
 
-            if (error) throw error;
+    // 点击消息框显示/隐藏操作按钮（撤回等）
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
 
-            const msgEl = document.querySelector(`.chat-message[data-id="${messageId}"]`);
-            if (msgEl) {
-                msgEl.style.animation = 'fadeOut 0.3s ease forwards';
-                setTimeout(() => msgEl.remove(), 300);
-            }
+    container.addEventListener('click', (e) => {
+        const messageEl = e.target.closest('.chat-message');
+        if (!messageEl) return;
 
-        } catch (e) {
-            console.error('删除失败:', e);
-            showMessageModal('错误', '删除失败，请重试', 'error');
-        }
+        // 如果点击的是撤回按钮本身，不拦截，让 onclick 正常执行
+        if (e.target.closest('.chat-message-withdraw')) return;
+
+        // 先关闭其他消息的按钮
+        container.querySelectorAll('.chat-message.show-actions').forEach(el => {
+            if (el !== messageEl) el.classList.remove('show-actions');
+        });
+
+        // 切换当前消息
+        messageEl.classList.toggle('show-actions');
     });
 }
 
-// 从列表移除消息（撤回/删除时实时同步）
-function removeChatMessage(msgId) {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
-
-    const msgEl = container.querySelector(`.chat-message[data-id="${msgId}"]`);
-    if (msgEl) {
-        msgEl.style.animation = 'fadeOut 0.3s ease forwards';
-        setTimeout(() => msgEl.remove(), 300);
-    }
-}
-
-// 添加新消息到列表
-// isOptimistic: 是否为乐观更新的临时消息
-function addChatMessage(msg, isOptimistic = false) {
-    const container = document.getElementById('chatMessages');
-    if (!container) return;
-
-    // 检查消息是否已存在（避免重复）
-    const existingMsg = container.querySelector(`.chat-message[data-id="${msg.id}"]`);
-    if (existingMsg) return;
-
-    // 如果这是实时订阅推来的真实消息，检查是否有同内容的乐观临时消息可以替换
-    if (!isOptimistic && msg.user_id) {
-        const optimisticMsgs = container.querySelectorAll('.chat-message.own-message');
-        for (const el of optimisticMsgs) {
-            const tempId = el.dataset.id;
-            if (tempId && tempId.startsWith('temp_')) {
-                // 匹配同用户、同内容的乐观消息，替换为真实消息
-                const contentEl = el.querySelector('.chat-message-content');
-                if (contentEl && contentEl.textContent === msg.content) {
-                    el.dataset.id = msg.id;
-                    el.querySelectorAll('[onclick]').forEach(btn => {
-                        btn.setAttribute('onclick', btn.getAttribute('onclick').replace(tempId, msg.id));
-                    });
-                    return; // 已替换，不需要再添加
-                }
-            }
-        }
-    }
-
-    // 移除空状态提示
-    const empty = container.querySelector('.chat-empty');
-    if (empty) empty.remove();
-
-    // 移除加载提示
-    const loading = container.querySelector('.chat-loading');
-    if (loading) loading.remove();
-
-    const isOwn = (currentUser && msg.user_id === currentUser.id) ||
-                  (!currentUser && msg.anonymous_user_id && msg.anonymous_user_id === anonymousUserId);
-    const isAdmin = currentUser && currentUser.isAdmin;
-
-    // 获取等级信息（管理员显示管理员标签）
-    const isAdminUser = msg.user_id && adminUserIds.has(msg.user_id);
-    const levelInfo = (!isAdminUser && msg.user_id) ? getUserLevelInfo(msg.user_id) : null;
-
-    // 等级标签：有缓存直接显示，没有则留空占位
-    const levelTagHTML = isAdminUser ? createAdminTagHTML() : (levelInfo ? createLevelTagHTML(levelInfo) : (msg.user_id ? '<span class="chat-level-tag"></span>' : ''));
-
-    // 新消息可以撤回（自己的消息）
-    const canWithdraw = isOwn;
-    const canAdminDelete = isAdmin && !isOwn;
-
-    const msgEl = document.createElement('div');
-    msgEl.className = `chat-message ${isOwn ? 'own-message' : ''} ${isAdminUser && !isOwn ? 'admin' : ''}`;
-    msgEl.dataset.id = msg.id;
-    msgEl.dataset.userId = msg.user_id || '';
-    msgEl.innerHTML = `
-        <div class="chat-message-header">
-            <span class="chat-message-author">${msg.is_anonymous ? '👤 匿名用户' : escapeHtml(msg.author_name)}</span>
-            ${levelTagHTML}
-            <span class="chat-message-time">${formatChatTime(msg.created_at)}</span>
-        </div>
-        <div class="chat-message-content">${escapeHtml(msg.content)}</div>
-        ${canWithdraw ? `
-            <div class="chat-message-actions">
-                <button class="chat-message-withdraw" onclick="withdrawChatMessage('${msg.id}')">↩️ 撤回</button>
-            </div>
-        ` : ''}
-        ${canAdminDelete ? `
-            <div class="chat-message-actions">
-                <button class="chat-message-delete" onclick="deleteChatMessage('${msg.id}')">🗑️ 删除</button>
-            </div>
-        ` : ''}
-    `;
-
-    container.appendChild(msgEl);
-
-    // 如果不是自己的消息且窗口未打开，增加未读计数
-    if (!isOwn && !isChatWindowOpen) {
-        unreadChatCount++;
-        updateChatBadge();
-    }
-
-    scrollToChatBottom();
-}
-
-// 设置聊天输入
+// 设置聊天输入快捷键（Ctrl+Enter 发送）
 function setupChatInput() {
     const input = document.getElementById('chatInput');
-    const anonymousCheckbox = document.getElementById('chatAnonymous');
+    if (!input) return;
 
-    if (input) {
-        // 回车发送
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendChatMessage();
-            }
-        });
-    }
-
-    // 设置匿名选项显示
-    if (anonymousCheckbox) {
-        if (currentUser) {
-            anonymousCheckbox.closest('.checkbox-label').style.display = 'flex';
-            anonymousCheckbox.checked = false;
-        } else {
-            anonymousCheckbox.closest('.checkbox-label').style.display = 'none';
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            sendChatMessage();
         }
-    }
+    });
 }

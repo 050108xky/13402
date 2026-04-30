@@ -96,19 +96,19 @@ async function publishAnnouncement() {
     }
 }
 
-async function deleteAnnouncement(id) {
-    if (!confirm('确定删除此公告？')) return;
+function deleteAnnouncement(id) {
+    showConfirmModal('确认删除', '确定删除此公告？', async () => {
+        try {
+            const { error } = await supabaseClient
+                .from('announcements')
+                .delete()
+                .eq('id', id);
 
-    try {
-        const { error } = await supabaseClient
-            .from('announcements')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        loadAnnouncements();
-    } catch (err) {
-        console.error('删除公告失败:', err);
-        showMessageModal('错误', '删除公告失败', 'error');
-    }
+            if (error) throw error;
+            loadAnnouncements();
+        } catch (err) {
+            console.error('删除公告失败:', err);
+            showMessageModal('错误', '删除公告失败', 'error');
+        }
+    });
 }

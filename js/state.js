@@ -32,7 +32,7 @@ let anonymousUserId = null;
 
 // 分页相关状态
 let currentPage = 1;
-const PAGE_SIZE = 10;
+let PAGE_SIZE = 10;
 let allSuggestions = [];
 let filteredSuggestions = [];
 let currentFilter = 'all';

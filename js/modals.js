@@ -20,18 +20,33 @@ function popModalHistory(modalId) {
     }
 }
 
-// 显示成功模态框
+// 显示成功通知（Toast）
 function showSuccessModal() {
-    const modal = document.getElementById('successModal');
-    modal.classList.add('show');
-    pushModalHistory('successModal');
+    showToast('提交成功！', '感谢你的建议，我们会认真考虑', 'success');
 }
 
-// 关闭成功模态框
+// 关闭成功模态框（兼容旧调用，已无实际弹窗）
 function closeModal() {
     const modal = document.getElementById('successModal');
-    modal.classList.remove('show');
+    if (modal) modal.classList.remove('show');
     popModalHistory('successModal');
+}
+
+// Toast 通知核心
+function showToast(title, message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<strong>${escapeHtml(title)}</strong> ${escapeHtml(message)}`;
+
+    container.appendChild(toast);
+
+    // 动画结束后移除 DOM（3s 显示 + 0.3s 消失）
+    setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+    }, 3000);
 }
 
 // 设置弹窗滚动弹性效果
@@ -209,32 +224,14 @@ function executeConfirm() {
     closeConfirmModal();
 }
 
-// ========== 消息模态框 ==========
+// ========== 消息通知（已改为 Toast） ==========
 
 function showMessageModal(title, message, type = 'info') {
-    const modal = document.getElementById('messageModal');
-    const titleEl = document.getElementById('messageTitle');
-    const contentEl = document.getElementById('messageContent');
-    const iconEl = document.getElementById('messageIcon');
-
-    titleEl.textContent = title;
-    contentEl.textContent = message;
-
-    // 根据类型设置图标
-    const icons = {
-        'success': '✅',
-        'error': '❌',
-        'warning': '⚠️',
-        'info': 'ℹ️'
-    };
-    iconEl.textContent = icons[type] || icons['info'];
-
-    modal.classList.add('show');
-    pushModalHistory('messageModal');
+    showToast(title, message, type);
 }
 
 function closeMessageModal() {
     const modal = document.getElementById('messageModal');
-    modal.classList.remove('show');
+    if (modal) modal.classList.remove('show');
     popModalHistory('messageModal');
 }
