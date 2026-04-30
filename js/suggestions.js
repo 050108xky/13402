@@ -2,14 +2,28 @@
 
 // 获取所有建议
 async function getSuggestions(page = 1, pageSize = PAGE_SIZE) {
-    const { data: suggestions, error } = await supabaseClient
+    // 只有在没搜索、没选“我的”且没选特定分类时才进行后端分页，否则保持全量以便前端复杂筛选（如果建议量级巨大，建议全部改后端）
+    // 这里我们先为最耗时的“全部”列表做后端分页优化
+    let query = supabaseClient
         .from('suggestions')
-        .select('id, name, type, content, is_anonymous, admin_only, anonymous_user_id, user_id, reply, reply_time, created_at, is_pinned, has_images, likes_count, comments_count')
+        .select('id, name, type, content, is_anonymous, admin_only, anonymous_user_id, user_id, reply, reply_time, created_at, is_pinned, has_images, likes_count, comments_count', { count: 'exact' })
         .order('created_at', { ascending: false });
+
+    // 如果只是普通加载（无搜索，分类为all），则启用后端分页加速
+    if (!currentSearch && currentFilter === 'all') {
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        query = query.range(from, to);
+    }
+
+    const { data: suggestions, count, error } = await query;
 
     if (error) {
         throw new Error(error.message);
     }
+
+    // 更新全局总数
+    if (count !== null) totalSuggestionsCount = count;
 
     return suggestions.map(item => ({
         id: item.id,

@@ -8,31 +8,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     suggestionsContainer = document.getElementById('suggestionsList');
     countBadge = document.getElementById('suggestionCount');
 
-    // 初始化 Supabase 客户端
-    await initializeSupabase();
+    // 1. 核心初始化 (并行执行提高速度)
+    await Promise.all([
+        initializeSupabase(),
+        initializeAnonymousUserId(),
+        restoreUserSession()
+    ]);
 
-    // 初始化匿名用户ID
-    initializeAnonymousUserId();
+    // 2. 基础数据准备
+    await Promise.all([
+        loadCurrentUserExp(),
+        loadAdminUserIds(),
+        loadUserLikes()
+    ]);
 
-    // 恢复用户登录状态
-    restoreUserSession();
-
-    // 加载当前用户经验数据
-    loadCurrentUserExp();
-
-    // 加载管理员用户ID
-    loadAdminUserIds();
-
-    // 加载用户点赞记录
-    loadUserLikes();
-
-    // 设置表单处理
+    // 3. UI 交互设置 (不阻塞数据加载)
     setupFormHandler();
-
-    // 设置炫彩输入效果
     setupRainbowInputs();
-
-    // 加载本地草稿
     loadDraft();
 
     // 性能优化：减少粒子数量，移动端更少
@@ -45,27 +37,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 设置筛选和搜索
     setupFilterAndSearch();
 
-    // 加载建议
+    // 4. 数据加载
     await loadSuggestions();
 
-    // 检查新回复
-    checkNewReplies();
-
-    // 设置浏览器通知
-    setupNotifications();
-
-    // 启用实时订阅（建议 + 点赞 + 聊天）
-    setupRealtimeSubscriptions();
-
-    // 初始化聊天滚动监听（加载更多历史）
-    initChatScroll();
-
-    // 启用下拉刷新
-    setupPullToRefresh();
-
-    // 后台预加载聊天消息（不阻塞页面，打开聊天室时直接渲染）
-    loadChatMessages();
-
-    // 设置聊天输入
-    setupChatInput();
+    // 5. 非核心功能延迟加载/启动
+    setTimeout(() => {
+        checkNewReplies();
+        setupNotifications();
+        setupRealtimeSubscriptions();
+        initChatScroll();
+        setupPullToRefresh();
+        loadChatMessages(); // 后台静默加载
+        setupChatInput();
+    }, 100);
 });
