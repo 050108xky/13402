@@ -19,6 +19,7 @@ async function syncUserLikesFromDB() {
         if (error) throw error;
         
         if (data) {
+            userLikes.clear(); // 强制清空旧状态以同步
             data.forEach(item => userLikes.add(item.suggestion_id));
             saveUserLikes();
             
@@ -34,6 +35,17 @@ async function syncUserLikesFromDB() {
     } catch (e) {
         console.error('从数据库同步点赞失败:', e);
     }
+}
+
+// 自动同步兜底
+function setupAutoSyncLikes() {
+    setInterval(() => {
+        if (supabaseClient) syncUserLikesFromDB();
+    }, 30000);
+    
+    window.addEventListener('focus', () => {
+        if (supabaseClient) syncUserLikesFromDB();
+    });
 }
 
 // 修改 loadUserLikes 让它更智能
