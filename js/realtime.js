@@ -235,7 +235,7 @@ async function handleLikeChange(payload) {
 
     const dbCount = data?.likes_count || 0;
 
-    if (dbCount !== suggestion.likesCount || l_anonymousUserId === anonymousUserId) {
+    if (dbCount !== suggestion.likesCount || isMatched) {
         suggestion.likesCount = dbCount;
 
         const card = document.querySelector(`[data-suggestion-id="${suggestionId}"]`);
