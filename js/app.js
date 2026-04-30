@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. 数据加载
     await loadSuggestions();
+    setupAutoSyncLikes();
 
     // 5. 非核心功能延迟加载/启动
     setTimeout(() => {
