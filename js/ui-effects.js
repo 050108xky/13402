@@ -113,30 +113,12 @@ function createParticles(count = 15) {
 
 // 显示 Toast 提示
 function showToast(message, type = 'info') {
-    // 移除已存在的 toast
-    const existingToast = document.querySelector('.realtime-toast');
-    if (existingToast) existingToast.remove();
-
-    const toast = document.createElement('div');
-    toast.className = 'realtime-toast';
-    toast.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        padding: 15px 25px;
-        background: ${type === 'success' ? 'rgba(0, 255, 136, 0.9)' : type === 'info' ? 'rgba(0, 212, 255, 0.9)' : 'rgba(255, 107, 107, 0.9)'};
-        color: #0a0e27;
-        border-radius: 12px;
-        font-weight: 600;
-        z-index: 2000;
-        animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    // 3秒后移除
-    setTimeout(() => toast.remove(), 3000);
+    // 转发给 modals.js 的新版极光玻璃 Toast
+    if (typeof window.showToast === 'function' && document.getElementById('toastContainer')) {
+        window.showToast('通知', message, type);
+    } else {
+        console.log('[Toast Fallback]', type, message);
+    }
 }
 
 // 显示新建议提示
