@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 一键导出 Excel 功能
 function exportToExcel() {
-    if (!window.allSuggestions || allSuggestions.length === 0) {
+    if (!allSuggestions || allSuggestions.length === 0) {
         showToast('导出失败', '当前没有可导出的建议数据', 'error');
         return;
     }
@@ -67,13 +67,13 @@ function exportToExcel() {
         var data = allSuggestions.map(function(s) {
             return {
                 '建议ID': s.id,
-                '作者': s.is_anonymous ? '匿名用户' : (s.name || '未知'),
+                '作者': s.anonymous ? '匿名用户' : (s.name || '未知'),
                 '类型': (window.typeMap && typeMap[s.type] && typeMap[s.type].label) || s.type,
-                '内容': s.content,
-                '提交时间': new Date(s.created_at).toLocaleString(),
+                '内容': s.suggestion,
+                '提交时间': new Date(s.createdAt || s.timestamp).toLocaleString(),
                 '状态': s.reply ? '已回复' : '待处理',
                 '管理员回复': s.reply || '无',
-                '点赞数': s.likes_count || 0
+                '点赞数': s.likesCount || 0
             };
         });
 

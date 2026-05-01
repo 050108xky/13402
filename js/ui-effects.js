@@ -112,23 +112,16 @@ function createParticles(count = 15) {
 }
 
 // 显示 Toast 提示
-function showToast(message, type = 'info') {
-    // 转发给 modals.js 的新版极光玻璃 Toast
-    if (typeof window.showToast === 'function' && document.getElementById('toastContainer')) {
-        window.showToast('通知', message, type);
-    } else {
-        console.log('[Toast Fallback]', type, message);
-    }
-}
+
 
 // 显示新建议提示
 function showNewSuggestionToast() {
-    showToast('💡 有新的建议提交了！', 'info');
+    showToast('新建议', '💡 有新的建议提交了！', 'info');
 }
 
 // 显示新回复提示
 function showNewReplyToast() {
-    showToast('💬 您的建议有了新回复！', 'success');
+    showToast('新回复', '💬 您的建议有了新回复！', 'success');
     checkNewReplies();  // 更新通知徽标
 }
 
