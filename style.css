@@ -5335,50 +5335,116 @@ body::before {
     }
 }
 
-/* ========== Toast 通知栏 ========== */
+/* ========== Toast 通知栏 - 极光玻璃版 ========== */
 .toast-container {
     position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 10000;
+    top: 24px;
+    right: 24px;
+    z-index: 20000;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     pointer-events: none;
 }
 
 .toast {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
     align-items: center;
-    gap: 10px;
-    padding: 12px 18px;
-    background: rgba(10, 14, 39, 0.95);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    color: var(--text-primary);
-    font-size: 0.9rem;
+    gap: 12px;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    color: #fff;
+    font-size: 0.95rem;
     pointer-events: auto;
-    animation: toastSlideIn 0.3s ease, toastFadeOut 0.3s ease 2.7s forwards;
-    max-width: 320px;
-    word-break: break-word;
+    position: relative;
+    overflow: hidden;
+    min-width: 280px;
+    max-width: 360px;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: toastSpringIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+               toastFadeOut 0.4s ease 2.7s forwards;
 }
 
-.toast-success { border-left: 4px solid #00ff88; }
-.toast-error   { border-left: 4px solid #ff6b6b; }
-.toast-warning { border-left: 4px solid #ffc107; }
-.toast-info    { border-left: 4px solid #00d4ff; }
+.toast::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    transform-origin: left;
+    animation: toastProgress 3s linear forwards;
+}
 
-@keyframes toastSlideIn {
-    from { opacity: 0; transform: translateX(100%); }
-    to   { opacity: 1; transform: translateX(0); }
+.toast-icon {
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.toast-title {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.toast-message {
+    opacity: 0.9;
+    font-size: 0.85rem;
+}
+
+/* 语义化颜色增强 */
+.toast-success { 
+    background: rgba(0, 255, 136, 0.15); 
+    border-color: rgba(0, 255, 136, 0.3);
+}
+.toast-success::before { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+
+.toast-error { 
+    background: rgba(255, 107, 107, 0.15); 
+    border-color: rgba(255, 107, 107, 0.3);
+}
+.toast-error::before { background: #ff6b6b; box-shadow: 0 0 10px #ff6b6b; }
+
+.toast-warning { 
+    background: rgba(255, 193, 7, 0.15); 
+    border-color: rgba(255, 193, 7, 0.3);
+}
+.toast-warning::before { background: #ffc107; box-shadow: 0 0 10px #ffc107; }
+
+.toast-info { 
+    background: rgba(0, 212, 255, 0.15); 
+    border-color: rgba(0, 212, 255, 0.3);
+}
+.toast-info::before { background: #00d4ff; box-shadow: 0 0 10px #00d4ff; }
+
+@keyframes toastSpringIn {
+    0% { opacity: 0; transform: translateX(100%) scale(0.8); }
+    70% { transform: translateX(-10px) scale(1.02); }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
 }
 
 @keyframes toastFadeOut {
-    from { opacity: 1; transform: translateX(0); }
-    to   { opacity: 0; transform: translateX(100%); }
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(50px) scale(0.9); }
+}
+
+@keyframes toastProgress {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
 }
 
 /* === PC端分栏布局 >= 1024px === */

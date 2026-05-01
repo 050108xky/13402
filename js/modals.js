@@ -37,15 +37,35 @@ function showToast(title, message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
+    // 类型与图标映射
+    const iconMap = {
+        'success': '✅',
+        'error': '❌',
+        'warning': '⚠️',
+        'info': 'ℹ️'
+    };
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<strong>${escapeHtml(title)}</strong> ${escapeHtml(message)}`;
+    
+    // 构建更美观的结构
+    toast.innerHTML = `
+        <div class="toast-icon">${iconMap[type] || 'ℹ️'}</div>
+        <div class="toast-content">
+            <div class="toast-title">${escapeHtml(title)}</div>
+            <div class="toast-message">${escapeHtml(message)}</div>
+        </div>
+    `;
 
     container.appendChild(toast);
 
-    // 动画结束后移除 DOM（3s 显示 + 0.3s 消失）
+    // 动画结束后移除 DOM（3.1s 保证淡出动画完成）
     setTimeout(() => {
-        if (toast.parentNode) toast.remove();
+        if (toast.parentNode) {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(50px) scale(0.9)';
+            setTimeout(() => toast.remove(), 400);
+        }
     }, 3000);
 }
 

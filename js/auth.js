@@ -239,8 +239,12 @@ function updateUserUI() {
 
     // 显示/隐藏批量操作工具栏（仅管理员）
     const batchToolbar = document.getElementById('batchToolbar');
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
     if (batchToolbar) {
         batchToolbar.style.display = isAdminMode ? 'flex' : 'none';
+    }
+    if (exportExcelBtn) {
+        exportExcelBtn.style.display = isAdminMode ? 'flex' : 'none';
     }
 
     // 更新聊天匿名选项

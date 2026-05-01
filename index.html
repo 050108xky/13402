@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>我们的土木</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=1777623441">
 </head>
 <body>
     <!-- 背景粒子效果 -->
@@ -154,6 +154,14 @@
                         <div class="stat-label">今日新增</div>
                     </div>
                 </div>
+                <!-- 导出 Excel 按钮（仅管理员可见） -->
+                <button id="exportExcelBtn" class="stat-item export-btn" style="display: none; cursor: pointer; border: none; background: rgba(0, 255, 136, 0.1);" onclick="exportToExcel()">
+                    <div class="stat-icon">📥</div>
+                    <div class="stat-info">
+                        <div class="stat-value" style="font-size: 1.1rem;">导出报表</div>
+                        <div class="stat-label">Excel (xlsx)</div>
+                    </div>
+                </button>
             </div>
             
             <!-- 类型分布图 -->
@@ -195,7 +203,6 @@
             <button class="chat-window-close" onclick="toggleChatWindow()">✕</button>
         </div>
         <div class="chat-messages" id="chatMessages">
-            <div class="chat-loading">加载中...</div>
         </div>
         <div class="chat-input-area">
             <textarea id="chatInput" placeholder="说点什么..." rows="1"></textarea>
@@ -371,7 +378,6 @@
                 <button class="announce-publish-btn" onclick="publishAnnouncement()">发布公告</button>
             </div>
             <div id="announcementContent" class="announce-content">
-                <div class="announce-loading">加载中...</div>
             </div>
         </div>
     </div>
@@ -389,7 +395,6 @@
 
             <!-- 用户列表 -->
             <div id="adminLevelList" class="admin-level-list">
-                <div class="admin-level-loading">加载中...</div>
             </div>
         </div>
     </div>
@@ -451,23 +456,26 @@
     <!-- Supabase 配置文件 -->
     <script src="config.js"></script>
 
+    <!-- 引入 Excel 导出库 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
     <!-- 模块化 JS（按依赖顺序加载） -->
-    <script src="js/state.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/supabase-init.js"></script>
-    <script src="js/levels.js"></script>
-    <script src="js/admin-levels.js"></script>
-    <script src="js/modals.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/announcements.js"></script>
-    <script src="js/ui-effects.js"></script>
-    <script src="js/form.js"></script>
-    <script src="js/suggestions.js"></script>
-    <script src="js/detail.js"></script>
-    <script src="js/likes.js"></script>
-    <script src="js/chat.js?v=10"></script>
-    <script src="js/realtime.js?v=10"></script>
-    <script src="js/notifications.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/state.js?v=1777623441"></script>
+    <script src="js/utils.js?v=1777623441"></script>
+    <script src="js/supabase-init.js?v=1777623441"></script>
+    <script src="js/levels.js?v=1777623441"></script>
+    <script src="js/admin-levels.js?v=1777623441"></script>
+    <script src="js/modals.js?v=1777623441"></script>
+    <script src="js/auth.js?v=1777623441"></script>
+    <script src="js/announcements.js?v=1777623441"></script>
+    <script src="js/ui-effects.js?v=1777623441"></script>
+    <script src="js/form.js?v=1777623441"></script>
+    <script src="js/suggestions.js?v=1777623441"></script>
+    <script src="js/detail.js?v=1777623441"></script>
+    <script src="js/likes.js?v=1777623441"></script>
+    <script src="js/chat.js?v=1777623441"></script>
+    <script src="js/realtime.js?v=1777623441"></script>
+    <script src="js/notifications.js?v=1777623441"></script>
+    <script src="js/app.js?v=1777623441"></script>
 </body>
 </html>

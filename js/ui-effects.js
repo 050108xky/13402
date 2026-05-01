@@ -121,7 +121,7 @@ function showToast(message, type = 'info') {
     toast.className = 'realtime-toast';
     toast.style.cssText = `
         position: fixed;
-        top: 20px;
+        top: 80px;
         right: 20px;
         padding: 15px 25px;
         background: ${type === 'success' ? 'rgba(0, 255, 136, 0.9)' : type === 'info' ? 'rgba(0, 212, 255, 0.9)' : 'rgba(255, 107, 107, 0.9)'};
